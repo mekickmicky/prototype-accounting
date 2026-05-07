@@ -169,13 +169,18 @@ function listWindows(): string[] {
 }
 
 function providerFor(model: Model): { alias: string; flags: string } {
+  // bypassPermissions for spawned workers: they're sandboxed to one task spec,
+  // run in their own tmux pane, and template forbids git commits / cross-task
+  // edits. acceptEdits stalled workers on every bash command (verification curls,
+  // dev-server starts, prisma migrate). Bypass keeps them productive — the
+  // prompt template is the actual safety boundary.
   if (model === 'DeepSeek') {
-    return { alias: 'ai-deepseek', flags: '--permission-mode acceptEdits' };
+    return { alias: 'ai-deepseek', flags: '--permission-mode bypassPermissions' };
   }
   const cliModel = model === 'Opus' ? 'opus' : 'sonnet';
   return {
     alias: 'ai-anthropic',
-    flags: `--model ${cliModel} --permission-mode acceptEdits`,
+    flags: `--model ${cliModel} --permission-mode bypassPermissions`,
   };
 }
 
