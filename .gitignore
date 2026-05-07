@@ -49,3 +49,7 @@ tmp/
 
 # Claude local settings (keep shared settings.json, ignore local overrides)
 .claude/settings.local.json
+
+# Orchestrator runtime state (Safeguard #2)
+.orchestrator.wip-started.json
+.orchestrator.stop

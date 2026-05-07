@@ -2,8 +2,8 @@
 // WIND Accounting — Parallel Task Orchestrator
 // Reads specs/tasks/phase-*.md, parses tasks, manages zellij session of child Claude sessions.
 
-import { readdir, readFile, writeFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readdir, readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import Langfuse from 'langfuse';
@@ -36,6 +36,16 @@ const BUDGET_USD = {
   Sonnet:   parseFloat(process.env.BUDGET_USD_SONNET   ?? '1.00'),
   DeepSeek: parseFloat(process.env.BUDGET_USD_DEEPSEEK ?? '0.50'),
 } as const;
+
+// Safeguard #2 — Stale-WIP detection + wall-clock timeout.
+// WIP_TIMEOUT_MIN: how long a task may stay WIP before it is killed and Blocked.
+// WIP_STARTED_FILE: per-task epoch-ms timestamps, written at spawn, cleared on Done/Reset.
+const WIP_TIMEOUT_MIN = {
+  Opus:     parseInt(process.env.WIP_TIMEOUT_MIN_OPUS     ?? '90', 10),
+  Sonnet:   parseInt(process.env.WIP_TIMEOUT_MIN_SONNET   ?? '60', 10),
+  DeepSeek: parseInt(process.env.WIP_TIMEOUT_MIN_DEEPSEEK ?? '30', 10),
+} as const;
+const WIP_STARTED_FILE = join(ROOT, '.orchestrator.wip-started.json');
 
 type Status = 'todo' | 'wip' | 'done' | 'blocked';
 type Model = 'Opus' | 'Sonnet' | 'DeepSeek';
@@ -226,6 +236,139 @@ async function setStatus(task: Task, newStatus: Status, suffix: string): Promise
     slice.replace(statusRe, newLine) +
     content.slice(headIdx + slice.length);
   await writeFile(task.file, updated);
+}
+
+// ---------------- WIP tracking (Safeguard #2) ----------------
+
+/** Read the WIP-started JSON file; return empty object on any error. */
+async function readWipStarted(): Promise<Record<string, number>> {
+  try {
+    const raw = await readFile(WIP_STARTED_FILE, 'utf-8');
+    return JSON.parse(raw) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+/** Atomically write the WIP-started JSON file (write tmp → rename). */
+async function writeWipStarted(data: Record<string, number>): Promise<void> {
+  const tmp = `${WIP_STARTED_FILE}.tmp`;
+  await writeFile(tmp, JSON.stringify(data, null, 2));
+  await rename(tmp, WIP_STARTED_FILE);
+}
+
+/** Record that a task just started WIP (epoch ms). */
+async function recordWipStart(taskId: string): Promise<void> {
+  const data = await readWipStarted();
+  data[taskId] = Date.now();
+  await writeWipStarted(data);
+}
+
+/** Remove a task's WIP-started entry (call on Done / Blocked / Todo-reset). */
+async function clearWipStart(taskId: string): Promise<void> {
+  const data = await readWipStarted();
+  if (!(taskId in data)) return;
+  delete data[taskId];
+  await writeWipStarted(data);
+}
+
+/**
+ * Prune WIP-started entries whose tasks are no longer marked WIP in the spec.
+ * Run at startup to handle crashes mid-spawn.
+ */
+async function pruneWipStarted(tasks: Task[]): Promise<void> {
+  const data = await readWipStarted();
+  const wipIds = new Set(tasks.filter((t) => t.status === 'wip').map((t) => t.id));
+  let changed = false;
+  for (const id of Object.keys(data)) {
+    if (!wipIds.has(id)) {
+      delete data[id];
+      changed = true;
+    }
+  }
+  if (changed) await writeWipStarted(data);
+}
+
+interface WipHealth {
+  orphans: Task[];
+  timeouts: Task[];
+}
+
+/**
+ * Classify WIP tasks as orphan (pane gone) or timed-out (runtime > model cap).
+ * Healthy tasks are ignored.
+ */
+async function scanWipHealth(tasks: Task[]): Promise<WipHealth> {
+  const wipTasks = tasks.filter((t) => t.status === 'wip');
+  if (wipTasks.length === 0) return { orphans: [], timeouts: [] };
+
+  const started = await readWipStarted();
+  const liveTabs = listWindows();
+  const now = Date.now();
+
+  const orphans: Task[] = [];
+  const timeouts: Task[] = [];
+
+  for (const t of wipTasks) {
+    const paneAlive = liveTabs.includes(t.id);
+    if (!paneAlive) {
+      orphans.push(t);
+      continue;
+    }
+    // Check wall-clock timeout
+    const startMs = started[t.id];
+    if (startMs !== undefined) {
+      const eff = effectiveModel(t.model);
+      const capMin = t.timeoutMin ?? WIP_TIMEOUT_MIN[eff];
+      const elapsedMin = (now - startMs) / 60_000;
+      if (elapsedMin > capMin) {
+        timeouts.push(t);
+      }
+    }
+  }
+
+  return { orphans, timeouts };
+}
+
+/** Reset an orphaned task back to Todo and clear its WIP entry. */
+async function resetToTodo(task: Task): Promise<void> {
+  await setStatus(task, 'todo', 'Not started');
+  await clearWipStart(task.id);
+  console.log(`[wip-health] ${task.id}: orphaned (pane gone) — reset to Todo`);
+  notify('info', task.id, `orphaned (pane gone) — reset to Todo`);
+  lf && autoTrace?.event({
+    name: 'task:orphan_reset',
+    metadata: { taskId: task.id, model: task.model },
+  });
+}
+
+/** Kill a timed-out task: close its zellij tab, mark Blocked, notify. */
+async function killAndBlock(task: Task, reason: string, dryRun = false): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  const eff = effectiveModel(task.model);
+  const capMin = task.timeoutMin ?? WIP_TIMEOUT_MIN[eff];
+  const started = await readWipStarted();
+  const startMs = started[task.id];
+  const elapsedMin = startMs ? Math.round((Date.now() - startMs) / 60_000) : '?';
+  const blockMsg = `Blocked (${today}) — ${reason} (${elapsedMin}m > ${capMin}m cap)`;
+
+  if (!dryRun) {
+    // Close the zellij tab by name (the tab is named after the task id)
+    spawnSync(
+      'zellij',
+      ['--session', SESSION, 'action', 'close-tab', '--name', task.id],
+      { encoding: 'utf-8' },
+    );
+  }
+
+  await setStatus(task, 'blocked', blockMsg);
+  await clearWipStart(task.id);
+  console.log(`[wip-health] ${task.id}: killed + Blocked — ${reason}`);
+  notify('error', task.id, blockMsg);
+  lf && autoTrace?.event({
+    name: 'task:wall_clock_timeout',
+    metadata: { taskId: task.id, model: task.model, elapsedMin, capMin, reason },
+  });
 }
 
 // ---------------- Zellij ----------------
@@ -427,6 +570,7 @@ async function cmdSpawn(ids: string[], dryRun: boolean): Promise<void> {
     const id = t.id;
     if (!dryRun) {
       await setStatus(t, 'wip', `In progress (${today}, pane ${SESSION}:${id})`);
+      await recordWipStart(id);
     }
     spawnInPane(t, dryRun);
     if (!dryRun) {
@@ -486,6 +630,7 @@ async function cmdDone(id: string): Promise<void> {
   }
   const today = new Date().toISOString().slice(0, 10);
   await setStatus(t, 'done', `Done (${today})`);
+  await clearWipStart(id);
   console.log(`Marked ${id} as done.`);
   notify('done', t.id, t.name);
   const span = activeSpans.get(id);
@@ -703,6 +848,13 @@ async function cmdAuto(rest: string[]): Promise<void> {
     });
   }
 
+  // Safeguard #2: Prune stale WIP-started entries from any previous crashed run.
+  // This ensures entries for tasks that aren't actually WIP don't skew timeout math.
+  {
+    const initialTasks = await parseAllTasks();
+    await pruneWipStarted(initialTasks);
+  }
+
   let cycleCount = 0;
   let consecutiveEmptyCycles = 0;
   const startedThisRun: string[] = [];
@@ -733,13 +885,33 @@ async function cmdAuto(rest: string[]): Promise<void> {
       break;
     }
 
-    const tasks = await parseAllTasks();
-    const counts = countByStatus(tasks);
+    let tasks = await parseAllTasks();
+    let counts = countByStatus(tasks);
 
-    // Track transitions for telemetry / done counter
+    // Safeguard #2 — scan WIP health: orphans (pane gone) and wall-clock timeouts.
+    // Run before slot/batch computation so counts reflect any resets/kills.
+    if (!opts.dryRun) {
+      const health = await scanWipHealth(tasks);
+      for (const t of health.orphans) await resetToTodo(t);
+      for (const t of health.timeouts) await killAndBlock(t, 'wall-clock timeout');
+      if (health.orphans.length > 0 || health.timeouts.length > 0) {
+        // Re-parse so WIP count is accurate before slot calc
+        tasks = await parseAllTasks();
+        counts = countByStatus(tasks);
+      }
+    }
+
+    // Track transitions for telemetry / done counter.
+    // Also clear WIP-started entries when a worker writes Done or Blocked itself.
     for (const t of tasks) {
-      if (t.status === 'done' && !seenDone.has(t.id)) seenDone.add(t.id);
-      if (t.status === 'blocked' && !seenBlocked.has(t.id)) seenBlocked.add(t.id);
+      if (t.status === 'done' && !seenDone.has(t.id)) {
+        seenDone.add(t.id);
+        if (!opts.dryRun) await clearWipStart(t.id);
+      }
+      if (t.status === 'blocked' && !seenBlocked.has(t.id)) {
+        seenBlocked.add(t.id);
+        if (!opts.dryRun) await clearWipStart(t.id);
+      }
       if (t.status === 'wip' && !seenWip.has(t.id)) seenWip.add(t.id);
     }
 
