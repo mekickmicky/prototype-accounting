@@ -91,7 +91,7 @@ T-1.1 (monorepo)
 - **Done when:** `bunx prisma migrate dev --name init` succeeds against fresh Postgres, `bunx prisma studio` shows all 29 tables
 
 ### T-1.4 — DB CHECK constraints (raw SQL migration)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/prisma/migrations/0001_add_check_constraints/migration.sql` (NEW)
 - **Reads:** specs/01 §Constraints, specs/02 §1 (double-entry)
