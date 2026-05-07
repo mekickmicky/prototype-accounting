@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Bank Reconciliation — WIND Accounting</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<style>
+  .recon-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .recon-row { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; transition: var(--transition); }
+  .recon-row:hover { background: var(--bg-hover); }
+  .recon-row.selected { background: rgba(200, 150, 122, .12); border-left: 3px solid var(--rose); }
+  .recon-row .meta { font-size: 11px; color: var(--text2); }
+  .conf-bar { display: inline-block; height: 4px; border-radius: 2px; }
+  .conf-high { background: var(--credit); }
+  .conf-mid { background: var(--rose); }
+  .conf-low { background: var(--status-draft); }
+  .recon-footer {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .recon-footer .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+  .recon-footer .stat-value { font-family: var(--font-mono); font-size: 18px; font-weight: 500; }
+  .balanced { color: var(--credit); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">WIND<span class="accent">·</span>Accounting</div>
+    <div class="breadcrumb">Bank · Reconciliation · KBank Current 0123456789</div>
+    <div class="spacer"></div>
+    <span class="pill">งวด: 2569-05</span>
+    <span class="pill">สมชาย บัญชี</span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="group">
+      <div class="group-label">Dashboard</div>
+      <a href="01-dashboard.html">Overview</a>
+    </div>
+    <div class="group">
+      <div class="group-label">General Ledger</div>
+      <a href="02-journal-entry.html">Journal Entries</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Accounts Receivable</div>
+      <a href="04-sales-invoice.html">Sales Invoices</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Tax</div>
+      <a href="05-pp30.html">ภพ.30</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Bank</div>
+      <a href="#">Accounts</a>
+      <a class="active" href="#">Reconciliation</a>
+      <a href="#">Import</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Reports</div>
+      <a href="03-trial-balance.html">Trial Balance</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Bank Reconciliation</h1>
+        <div class="subtitle">KBank Current — 0123456789 · Period: 1–31 พ.ค. 2569 · 7 รายการรอ reconcile</div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-secondary">Import more</button>
+        <button class="btn btn-secondary">Auto-match all</button>
+        <button class="btn btn-primary">Save progress</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <select class="select" style="width: 200px;">
+        <option>Show: Unmatched only</option>
+        <option>Show: All transactions</option>
+        <option>Show: Recently matched</option>
+      </select>
+      <input class="input" style="width: 220px;" placeholder="Search description or amount..." />
+      <span class="t-sm t-muted">เลือก 1 รายการธนาคารเพื่อดูข้อเสนอจับคู่ →</span>
+    </div>
+
+    <div class="recon-grid">
+      <!-- LEFT: Bank transactions -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Bank Transactions · ธุรกรรมจากธนาคาร</div>
+          <span class="t-sm t-muted">7 unmatched</span>
+        </div>
+
+        <div class="recon-row selected">
+          <div class="flex between center mb-1">
+            <strong style="font-size: 13px;">07/05/69 · 14:22</strong>
+            <span class="t-mono text-credit" style="font-size: 14px;">+9,900.00</span>
+          </div>
+          <div style="font-size: 12px;">QR PAYMENT FROM PROMPTPAY</div>
+          <div class="meta">Bank ref: <span class="code">QR202605070142</span></div>
+        </div>
+
+        <div class="recon-row">
+          <div class="flex between center mb-1">
+            <strong style="font-size: 13px;">07/05/69 · 11:04</strong>
+            <span class="t-mono text-credit" style="font-size: 14px;">+11,600.00</span>
+          </div>
+          <div style="font-size: 12px;">TRF FROM 0123-45-6789 / LISA M.</div>
+          <div class="meta">Bank ref: <span class="code">T202605070110</span></div>
+        </div>
+
+        <div class="recon-row">
+          <div class="flex between center mb-1">
+            <strong style="font-size: 13px;">06/05/69 · 09:15</strong>
+            <span class="t-mono text-debit" style="font-size: 14px;">−45,000.00</span>
+          </div>
+          <div style="font-size: 12px;">TRF TO 9876-54-3210 / ALLERGAN</div>
+          <div class="meta">Bank ref: <span class="code">T202605060091</span></div>
+        </div>
+
+        <div class="recon-row">
+          <div class="flex between center mb-1">
+            <strong style="font-size: 13px;">06/05/69 · 23:59</strong>
+            <span class="t-mono text-debit" style="font-size: 14px;">−300.00</span>
+          </div>
+          <div style="font-size: 12px;">TRF FEE</div>
+          <div class="meta">Bank ref: <span class="code">FEE2026050623</span></div>
+        </div>
+
+        <div class="recon-row">
+          <div class="flex between center mb-1">
+            <strong style="font-size: 13px;">05/05/69 · 16:42</strong>
+            <span class="t-mono text-credit" style="font-size: 14px;">+8,500.00</span>
+          </div>
+          <div style="font-size: 12px;">TRF FROM 1111-22-3333 / PIM W.</div>
+          <div class="meta">Bank ref: <span class="code">T202605051642</span></div>
+        </div>
+
+        <div class="recon-row">
+          <div class="flex between center mb-1">
+            <strong style="font-size: 13px;">04/05/69 · 10:00</strong>
+            <span class="t-mono text-debit" style="font-size: 14px;">−85,600.00</span>
+          </div>
+          <div style="font-size: 12px;">TRF TO 5555-66-7777 / SUTHEP K.</div>
+          <div class="meta">Bank ref: <span class="code">T202605041000</span></div>
+        </div>
+
+        <div class="recon-row">
+          <div class="flex between center mb-1">
+            <strong style="font-size: 13px;">02/05/69 · 14:00</strong>
+            <span class="t-mono text-debit" style="font-size: 14px;">−25,950.00</span>
+          </div>
+          <div style="font-size: 12px;">TRF TO MARKETING AGENCY 1</div>
+          <div class="meta">Bank ref: <span class="code">T202605021400</span></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Suggestions -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Match Suggestions · ข้อเสนอจับคู่</div>
+          <span class="t-sm t-muted">QR +฿9,900.00 · 07/05/69</span>
+        </div>
+
+        <div class="card-body">
+          <div class="t-label mb-2">Auto-suggestions ranked by confidence</div>
+          
+          <!-- High confidence -->
+          <div style="border: 1px solid var(--credit); border-radius: 4px; padding: 10px 12px; margin-bottom: 8px; background: rgba(107,142,127,.06);">
+            <div class="flex between center mb-2">
+              <strong style="font-size: 13px; color: var(--credit);">RCT-2026-0089 · Receipt</strong>
+              <span class="t-mono t-sm">Confidence 0.98</span>
+            </div>
+            <div style="font-size: 12px;">สมชาย ใจดี · QR PromptPay · 07/05/69</div>
+            <div class="t-mono t-sm" style="margin-top: 4px;">Amount: 9,900.00 — exact match</div>
+            <div style="height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 8px; overflow: hidden;">
+              <div class="conf-bar conf-high" style="width: 98%; height: 100%;"></div>
+            </div>
+            <div class="flex gap-2" style="margin-top: 10px;">
+              <button class="btn btn-primary btn-sm">✓ Confirm Match</button>
+              <button class="btn btn-ghost btn-sm">View Receipt →</button>
+            </div>
+          </div>
+
+          <!-- Medium confidence -->
+          <div style="border: 1px solid var(--border2); border-radius: 4px; padding: 10px 12px; margin-bottom: 8px;">
+            <div class="flex between center mb-2">
+              <strong style="font-size: 13px;">RCT-2026-0085 · Receipt</strong>
+              <span class="t-mono t-sm">Confidence 0.72</span>
+            </div>
+            <div style="font-size: 12px;">เกษราภรณ์ ฟ้า · CASH · 06/05/69</div>
+            <div class="t-mono t-sm" style="margin-top: 4px;">Amount: 9,900.00 — 1 day off, payment method differs</div>
+            <div style="height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 8px; overflow: hidden;">
+              <div class="conf-bar conf-mid" style="width: 72%; height: 100%;"></div>
+            </div>
+            <div class="flex gap-2" style="margin-top: 10px;">
+              <button class="btn btn-secondary btn-sm">Match instead</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <div class="t-label mb-2">Other actions</div>
+            <div class="flex gap-2">
+              <button class="btn btn-secondary btn-sm">Search receipts manually</button>
+              <button class="btn btn-secondary btn-sm">Create JE from this txn</button>
+              <button class="btn btn-ghost btn-sm">Mark as ignored</button>
+            </div>
+            <div class="t-xs t-muted" style="margin-top: 8px;">
+              "Create JE" สร้าง JE ใหม่ Dr. Bank Fee · Cr. Cash/Bank — เหมาะสำหรับค่าธรรมเนียมที่ยังไม่ได้บันทึก
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer summary -->
+    <div class="recon-footer">
+      <div>
+        <div class="stat-label">Bank Balance (statement)</div>
+        <div class="stat-value">1,968,400.00</div>
+      </div>
+      <div>
+        <div class="stat-label">Book Balance (GL 11020)</div>
+        <div class="stat-value">1,922,200.00</div>
+      </div>
+      <div>
+        <div class="stat-label">Difference</div>
+        <div class="stat-value" style="color: var(--balance-neg);">46,200.00</div>
+      </div>
+      <div>
+        <div class="stat-label">Status</div>
+        <div class="stat-value" style="color: var(--rose); font-size: 14px;">Reconciling — 7 left</div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

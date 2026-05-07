@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard — WIND Accounting</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+<div class="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">WIND<span class="accent">·</span>Accounting</div>
+    <div class="breadcrumb">Dashboard</div>
+    <div class="spacer"></div>
+    <span class="pill">งวด: 2569-05 (พฤษภาคม)</span>
+    <span class="pill">ทุกสาขา</span>
+    <span class="pill">สมชาย บัญชี · ACCOUNTANT</span>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="group">
+      <div class="group-label">Dashboard</div>
+      <a class="active" href="#">Overview</a>
+    </div>
+    <div class="group">
+      <div class="group-label">General Ledger</div>
+      <a href="02-journal-entry.html">Chart of Accounts</a>
+      <a href="02-journal-entry.html">Journal Entries</a>
+      <a href="#">Periods</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Accounts Receivable</div>
+      <a href="#">Customers</a>
+      <a href="04-sales-invoice.html">Sales Invoices</a>
+      <a href="#">Receipts</a>
+      <a href="#">AR Aging</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Accounts Payable</div>
+      <a href="#">Vendors</a>
+      <a href="#">Bills</a>
+      <a href="#">Payments</a>
+      <a href="#">AP Aging</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Tax</div>
+      <a href="05-pp30.html">ภพ.30</a>
+      <a href="#">ภงด.3 / 53</a>
+      <a href="#">VAT Register</a>
+      <a href="#">WHT Certs</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Bank</div>
+      <a href="#">Accounts</a>
+      <a href="06-bank-reconcile.html">Reconciliation</a>
+      <a href="#">Import</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Reports</div>
+      <a href="03-trial-balance.html">Trial Balance</a>
+      <a href="#">P&amp;L</a>
+      <a href="#">Balance Sheet</a>
+      <a href="#">Cash Flow</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Settings</div>
+      <a href="#">Company</a>
+      <a href="#">Account Map</a>
+      <a href="#">Users</a>
+      <a href="#">Audit Log</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Overview</h1>
+        <div class="subtitle">7 พฤษภาคม 2569 · ภาพรวมการเงินประจำงวด</div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-secondary">+ New Journal Entry</button>
+        <button class="btn btn-primary">+ New Invoice</button>
+      </div>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="stat-label">Revenue MTD</div>
+        <div class="stat-value">฿1,287,540<span class="t-sm t-muted">.00</span></div>
+        <div class="stat-meta">เทียบเดือนก่อน <span class="text-credit">+12.4%</span></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Net Income MTD</div>
+        <div class="stat-value pos">฿428,150<span class="t-sm t-muted">.00</span></div>
+        <div class="stat-meta">Margin 33.2%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Cash &amp; Bank</div>
+        <div class="stat-value">฿2,847,500<span class="t-sm t-muted">.00</span></div>
+        <div class="stat-meta">3 บัญชี + เงินสด</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Open AR</div>
+        <div class="stat-value">฿342,800<span class="t-sm t-muted">.00</span></div>
+        <div class="stat-meta"><span class="text-debit">14 ใบ</span> · 2 ใบเกินกำหนด</div>
+      </div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+      
+      <!-- Recent activity -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">รายการล่าสุด · Recent Activity</div>
+          <a href="02-journal-entry.html" class="btn btn-ghost btn-sm">View all →</a>
+        </div>
+        <table class="acc-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Doc</th>
+              <th>Description</th>
+              <th class="right">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>07/05/69</td>
+              <td><span class="code">JE-2026-0156</span></td>
+              <td>Visit completed — สมชาย ใจดี · Botox 100U</td>
+              <td class="num">9,900.00</td>
+              <td><span class="badge badge-posted">Posted</span></td>
+            </tr>
+            <tr>
+              <td>07/05/69</td>
+              <td><span class="code">RCT-2026-0089</span></td>
+              <td>Receipt — สมชาย ใจดี · CREDIT_CARD</td>
+              <td class="num">9,900.00</td>
+              <td><span class="badge badge-posted">Posted</span></td>
+            </tr>
+            <tr>
+              <td>07/05/69</td>
+              <td><span class="code">INV-2026-0042</span></td>
+              <td>Sales Invoice — ลิซ่า มโนพงษ์ · Filler HA 1cc</td>
+              <td class="num">8,500.00</td>
+              <td><span class="badge badge-paid">Paid</span></td>
+            </tr>
+            <tr>
+              <td>06/05/69</td>
+              <td><span class="code">PAY-2026-0023</span></td>
+              <td>Payment — Allergan Thailand · supplies May</td>
+              <td class="num">45,000.00</td>
+              <td><span class="badge badge-posted">Posted</span></td>
+            </tr>
+            <tr>
+              <td>06/05/69</td>
+              <td><span class="code">JE-2026-0148</span></td>
+              <td>Bank fee — KBank monthly</td>
+              <td class="num">300.00</td>
+              <td><span class="badge badge-posted">Posted</span></td>
+            </tr>
+            <tr>
+              <td>05/05/69</td>
+              <td><span class="code">BILL-2026-0018</span></td>
+              <td>Bill — Landlord Mr.Suthep · Rent May TL</td>
+              <td class="num">85,600.00</td>
+              <td><span class="badge badge-posted">Posted</span></td>
+            </tr>
+            <tr>
+              <td>05/05/69</td>
+              <td><span class="code">JE-2026-0140</span></td>
+              <td>Salary accrual — April</td>
+              <td class="num">315,000.00</td>
+              <td><span class="badge badge-posted">Posted</span></td>
+            </tr>
+            <tr>
+              <td>02/05/69</td>
+              <td><span class="code">JE-2026-0134</span></td>
+              <td>Stock export from wind-stock — April closing</td>
+              <td class="num">62,400.00</td>
+              <td><span class="badge badge-posted">Posted</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Right column -->
+      <div class="flex-col gap-3">
+        
+        <!-- Period status -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">งวดบัญชี · Period Status</div>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <div class="t-label mb-1">งวดปัจจุบัน</div>
+              <div class="t-display" style="font-size: 22px;">2569-05 · พฤษภาคม</div>
+              <div class="t-sm t-muted">1 พ.ค. 2569 – 31 พ.ค. 2569 · OPEN</div>
+            </div>
+            <div class="mb-3">
+              <div class="t-label mb-1">งวดที่ปิดล่าสุด</div>
+              <div class="t-mono" style="font-size: 14px;">2569-04 · เมษายน</div>
+              <div class="t-sm t-muted">ปิดวันที่ 5 พ.ค. · โดย รัชดา การเงิน</div>
+            </div>
+            <div>
+              <div class="t-label mb-1">งวดถัดไปที่ต้องปิด</div>
+              <div class="t-sm">31 พ.ค. 2569</div>
+              <div class="t-sm t-dim">24 วัน</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tax filing -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">ภาษี · Tax Filing</div>
+          </div>
+          <div class="card-body">
+            <div class="flex between center mb-2">
+              <div>
+                <div class="t-label">ภพ.30 · เม.ย. 2569</div>
+                <div class="t-mono" style="color: var(--debit); font-size: 16px;">ครบกำหนด 15 พ.ค.</div>
+              </div>
+              <span class="badge badge-draft">DRAFT</span>
+            </div>
+            <div class="t-sm t-muted mb-3">
+              ภาษีขาย <span class="t-mono">฿72,840</span> · 
+              ภาษีซื้อ <span class="t-mono">฿18,200</span> · 
+              ต้องชำระ <span class="t-mono">฿54,640</span>
+            </div>
+            <button class="btn btn-primary btn-sm" style="width: 100%;">ตรวจและยื่น ภพ.30 →</button>
+          </div>
+        </div>
+
+        <!-- Reconciliation status -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Bank Reconciliation</div>
+          </div>
+          <div class="card-body">
+            <table class="acc-table" style="font-size: 12px;">
+              <tbody>
+                <tr>
+                  <td>KBank Current</td>
+                  <td class="num"><span class="text-credit">98%</span></td>
+                </tr>
+                <tr>
+                  <td>SCB Savings</td>
+                  <td class="num"><span class="text-credit">100%</span></td>
+                </tr>
+                <tr>
+                  <td>Cash on Hand</td>
+                  <td class="num"><span class="text-debit">82%</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="t-sm t-muted mb-2" style="margin-top: 8px;">
+              7 รายการรอ reconcile
+            </div>
+            <button class="btn btn-secondary btn-sm" style="width: 100%;">ไปหน้า Reconciliation →</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

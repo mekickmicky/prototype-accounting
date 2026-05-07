@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Sales Invoice — WIND Accounting</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<style>
+  .invoice-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+  .totals-card {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-family: var(--font-mono);
+  }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .totals-row.grand {
+    border-top: 2px solid var(--rose);
+    padding-top: 12px;
+    margin-top: 6px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--rose);
+  }
+  .je-preview {
+    background: var(--bg2);
+    border: 1px dashed var(--border2);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .je-preview .line {
+    display: grid;
+    grid-template-columns: 200px 100px 100px;
+    gap: 8px;
+    padding: 3px 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">WIND<span class="accent">·</span>Accounting</div>
+    <div class="breadcrumb">Accounts Receivable · Sales Invoices · New</div>
+    <div class="spacer"></div>
+    <span class="pill">งวด: 2569-05</span>
+    <span class="pill">สมชาย บัญชี</span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="group">
+      <div class="group-label">Dashboard</div>
+      <a href="01-dashboard.html">Overview</a>
+    </div>
+    <div class="group">
+      <div class="group-label">General Ledger</div>
+      <a href="02-journal-entry.html">Journal Entries</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Accounts Receivable</div>
+      <a href="#">Customers</a>
+      <a class="active" href="#">Sales Invoices</a>
+      <a href="#">Receipts</a>
+      <a href="#">AR Aging</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Tax</div>
+      <a href="05-pp30.html">ภพ.30</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Bank</div>
+      <a href="06-bank-reconcile.html">Reconciliation</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Reports</div>
+      <a href="03-trial-balance.html">Trial Balance</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Sales Invoice</h1>
+        <div class="subtitle"><span class="badge badge-draft">Draft</span> &nbsp;จะสร้างเลขที่หลังจาก Post</div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-secondary">Save Draft</button>
+        <button class="btn btn-primary">Post &amp; Issue</button>
+      </div>
+    </div>
+
+    <div class="invoice-grid">
+      <!-- LEFT COLUMN: Form -->
+      <div>
+        <!-- Header info -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <div class="row row-3 mb-3">
+              <div>
+                <label class="label">Customer</label>
+                <select class="select">
+                  <option>CUST-0002 · ลิซ่า มโนพงษ์</option>
+                </select>
+                <div class="t-xs t-dim" style="margin-top: 4px;">โทร: 082-345-6789 · ไม่มีเลขผู้เสียภาษี</div>
+              </div>
+              <div>
+                <label class="label">Branch</label>
+                <select class="select">
+                  <option>TL — ทองหล่อ</option>
+                  <option>EK — เอกมัย</option>
+                  <option>RAMA9 — พระราม 9</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Issue Date</label>
+                <input class="input" value="07/05/2569" />
+              </div>
+            </div>
+            <div class="row row-3 mb-3">
+              <div>
+                <label class="label">Due Date</label>
+                <input class="input" value="07/05/2569" />
+              </div>
+              <div>
+                <label class="label">Tax Invoice</label>
+                <select class="select">
+                  <option>ใบแจ้งหนี้ปกติ</option>
+                  <option>ใบกำกับภาษี (ต้องมีเลขผู้เสียภาษี)</option>
+                  <option>ใบกำกับภาษี + ใบเสร็จรับเงิน</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">VAT Inclusive</label>
+                <select class="select">
+                  <option>Yes — ราคาที่ป้อนรวม VAT แล้ว</option>
+                  <option>No — VAT จะคำนวณเพิ่มจากราคา</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lines -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <div class="card-title">รายการ · Lines</div>
+            <button class="btn btn-ghost btn-sm">+ Add Line</button>
+          </div>
+          <table class="acc-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Service / Product</th>
+                <th class="right">Qty</th>
+                <th class="right">Unit Price</th>
+                <th class="right">Discount</th>
+                <th>Revenue Acct</th>
+                <th>VAT</th>
+                <th class="right">Line Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>
+                  <div style="font-size: 12px;">FILLER_HA · HA Filler 1cc</div>
+                  <div class="t-xs t-muted">Doctor: Dr.Niran (commission 30%)</div>
+                </td>
+                <td class="num">1</td>
+                <td class="num">8,500.00</td>
+                <td class="num zero">—</td>
+                <td><span class="code">41020</span></td>
+                <td class="t-mono t-sm">7%</td>
+                <td class="num">8,500.00</td>
+                <td><button class="btn btn-ghost btn-sm">×</button></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>
+                  <div style="font-size: 12px;">FACIAL · Hydra Facial</div>
+                  <div class="t-xs t-muted">Therapist: Pim</div>
+                </td>
+                <td class="num">1</td>
+                <td class="num">2,500.00</td>
+                <td class="num">300.00</td>
+                <td><span class="code">41040</span></td>
+                <td class="t-mono t-sm">7%</td>
+                <td class="num">2,200.00</td>
+                <td><button class="btn btn-ghost btn-sm">×</button></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>
+                  <div style="font-size: 12px;">SKINCARE · Vitamin C Serum 30ml</div>
+                  <div class="t-xs t-muted">Product retail</div>
+                </td>
+                <td class="num">1</td>
+                <td class="num">1,200.00</td>
+                <td class="num zero">—</td>
+                <td><span class="code">42010</span></td>
+                <td class="t-mono t-sm">7%</td>
+                <td class="num">1,200.00</td>
+                <td><button class="btn btn-ghost btn-sm">×</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Notes -->
+        <div class="card">
+          <div class="card-body">
+            <label class="label">Notes</label>
+            <textarea class="textarea" rows="2" placeholder="หมายเหตุ (ตัวเลือก)">Treatment package — first session</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Totals + JE Preview -->
+      <div class="flex-col gap-3">
+        
+        <!-- Totals -->
+        <div class="totals-card">
+          <div class="totals-row">
+            <span style="color: var(--text2);">Subtotal (gross)</span>
+            <span>11,900.00</span>
+          </div>
+          <div class="totals-row">
+            <span style="color: var(--text2);">Less: Discount</span>
+            <span class="text-debit">(300.00)</span>
+          </div>
+          <div class="totals-row" style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+            <span style="color: var(--text2);">Subtotal after discount</span>
+            <span>11,600.00</span>
+          </div>
+          <div class="totals-row">
+            <span style="color: var(--text2);">Net (excl. VAT)</span>
+            <span>10,841.12</span>
+          </div>
+          <div class="totals-row">
+            <span style="color: var(--text2);">VAT 7%</span>
+            <span>758.88</span>
+          </div>
+          <div class="totals-row">
+            <span style="color: var(--text2);">Withholding</span>
+            <span class="zero" style="color: var(--text3);">—</span>
+          </div>
+          <div class="totals-row grand">
+            <span>Total</span>
+            <span>11,600.00</span>
+          </div>
+        </div>
+
+        <!-- JE Preview -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">JE Preview · ตัวอย่างการบันทึกบัญชี</div>
+          </div>
+          <div class="card-body">
+            <div class="t-xs t-muted mb-2">เมื่อกด Post จะสร้าง Journal Entry นี้:</div>
+            <div class="je-preview">
+              <div class="line" style="color: var(--text2); font-size: 10px; text-transform: uppercase;">
+                <span>Account</span><span class="right">Debit</span><span class="right">Credit</span>
+              </div>
+              <div class="line">
+                <span>12010 ลูกหนี้การค้า</span>
+                <span class="right text-debit">11,600.00</span>
+                <span class="right">—</span>
+              </div>
+              <div class="line">
+                <span style="padding-left: 12px;">41020 รายได้ Filler</span>
+                <span class="right">—</span>
+                <span class="right text-credit">7,943.93</span>
+              </div>
+              <div class="line">
+                <span style="padding-left: 12px;">41040 รายได้ Facial</span>
+                <span class="right">—</span>
+                <span class="right text-credit">2,056.07</span>
+              </div>
+              <div class="line">
+                <span style="padding-left: 12px;">42010 ขายผลิตภัณฑ์</span>
+                <span class="right">—</span>
+                <span class="right text-credit">1,121.50</span>
+              </div>
+              <div class="line">
+                <span style="padding-left: 12px;">21110 ภาษีขาย</span>
+                <span class="right">—</span>
+                <span class="right text-credit">478.50</span>
+              </div>
+              <div class="line" style="border-top: 1px solid var(--border); padding-top: 5px; margin-top: 3px; font-weight: 600;">
+                <span>Balance check</span>
+                <span class="right text-debit">11,600.00</span>
+                <span class="right text-credit">11,600.00</span>
+              </div>
+            </div>
+            <div class="t-xs t-muted" style="margin-top: 8px;">
+              ✓ ยังจะสร้าง: VAT register entry (output 7%) · Doctor commission accrual (Dr.Niran ฿2,550)
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick payment -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Record Payment Now? (Optional)</div>
+          </div>
+          <div class="card-body">
+            <div class="row row-2 mb-2">
+              <div>
+                <label class="label">Method</label>
+                <select class="select">
+                  <option>—</option>
+                  <option>CASH</option>
+                  <option>CREDIT_CARD (KBank)</option>
+                  <option>QR PromptPay</option>
+                  <option>TRANSFER</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Amount</label>
+                <input class="input num" placeholder="0.00" />
+              </div>
+            </div>
+            <div class="t-xs t-muted">
+              ถ้าระบุ จะสร้างใบเสร็จรับเงินอัตโนมัติเมื่อ Post
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

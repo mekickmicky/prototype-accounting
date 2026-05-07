@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Trial Balance — WIND Accounting</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">WIND<span class="accent">·</span>Accounting</div>
+    <div class="breadcrumb">Reports · Trial Balance</div>
+    <div class="spacer"></div>
+    <span class="pill">งวด: 2569-05</span>
+    <span class="pill">สมชาย บัญชี</span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="group">
+      <div class="group-label">Dashboard</div>
+      <a href="01-dashboard.html">Overview</a>
+    </div>
+    <div class="group">
+      <div class="group-label">General Ledger</div>
+      <a href="02-journal-entry.html">Journal Entries</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Accounts Receivable</div>
+      <a href="04-sales-invoice.html">Sales Invoices</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Tax</div>
+      <a href="05-pp30.html">ภพ.30</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Bank</div>
+      <a href="06-bank-reconcile.html">Reconciliation</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Reports</div>
+      <a class="active" href="#">Trial Balance</a>
+      <a href="#">P&amp;L</a>
+      <a href="#">Balance Sheet</a>
+      <a href="#">Cash Flow</a>
+      <a href="#">General Ledger</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="t-display">Trial Balance</h1>
+        <div class="subtitle">งบทดลอง · ณ วันที่ 31 พฤษภาคม 2569 · ทุกสาขา</div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-secondary btn-sm">PDF</button>
+        <button class="btn btn-secondary btn-sm">CSV</button>
+        <button class="btn btn-secondary btn-sm">XLSX</button>
+        <button class="btn btn-primary btn-sm">Print</button>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div>
+        <span class="t-label" style="margin-right: 4px;">As of</span>
+        <input class="input" style="width: 130px; display: inline-block;" value="31/05/2569" />
+      </div>
+      <div>
+        <span class="t-label" style="margin-right: 4px;">Branch</span>
+        <select class="select" style="width: 140px; display: inline-block;">
+          <option>All branches</option>
+          <option>TL — ทองหล่อ</option>
+          <option>EK — เอกมัย</option>
+          <option>RAMA9</option>
+        </select>
+      </div>
+      <div>
+        <span class="t-label" style="margin-right: 4px;">Comparative</span>
+        <select class="select" style="width: 160px; display: inline-block;">
+          <option>None</option>
+          <option>vs Previous month</option>
+          <option>vs Same month prior year</option>
+        </select>
+      </div>
+      <label class="flex center gap-2" style="font-size: 12px; color: var(--text2);">
+        <input type="checkbox" /> Hide zero-balance
+      </label>
+      <label class="flex center gap-2" style="font-size: 12px; color: var(--text2);">
+        <input type="checkbox" checked /> Group by type
+      </label>
+    </div>
+
+    <!-- Balance check banner -->
+    <div style="background: rgba(107, 142, 127, .1); border: 1px solid var(--credit); border-radius: 4px; padding: 8px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px;">
+      <span style="color: var(--credit); font-weight: 600;">✓ Balanced</span>
+      <span class="t-muted">งบทดลองสมดุล · Total Dr = Total Cr = ฿18,425,640.00</span>
+    </div>
+
+    <!-- Trial balance table -->
+    <div class="card">
+      <table class="acc-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Account</th>
+            <th class="right">Debit Total</th>
+            <th class="right">Credit Total</th>
+            <th class="right">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ASSETS -->
+          <tr class="group-row"><td colspan="5">Assets · สินทรัพย์</td></tr>
+          <tr>
+            <td><span class="code">11010</span></td>
+            <td>เงินสด · Cash on Hand</td>
+            <td class="num dr">456,200.00</td>
+            <td class="num cr">298,500.00</td>
+            <td class="num">157,700.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">11020</span></td>
+            <td>เงินฝากธนาคาร — กสิกรไทย กระแส</td>
+            <td class="num dr">3,847,500.00</td>
+            <td class="num cr">1,925,300.00</td>
+            <td class="num">1,922,200.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">11030</span></td>
+            <td>เงินฝากธนาคาร — ไทยพาณิชย์ ออมทรัพย์</td>
+            <td class="num dr">1,200,000.00</td>
+            <td class="num cr">432,800.00</td>
+            <td class="num">767,200.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">11100</span></td>
+            <td>เงินสดย่อย</td>
+            <td class="num dr">15,000.00</td>
+            <td class="num cr">14,600.00</td>
+            <td class="num">400.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">12010</span></td>
+            <td>ลูกหนี้การค้า · Accounts Receivable</td>
+            <td class="num dr">5,142,800.00</td>
+            <td class="num cr">4,800,000.00</td>
+            <td class="num">342,800.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">13010</span></td>
+            <td>สินค้าคงเหลือ — ผลิตภัณฑ์</td>
+            <td class="num dr">847,400.00</td>
+            <td class="num cr">395,100.00</td>
+            <td class="num">452,300.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">14010</span></td>
+            <td>ภาษีซื้อ · VAT Receivable</td>
+            <td class="num dr">28,640.00</td>
+            <td class="num cr">10,440.00</td>
+            <td class="num">18,200.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">14020</span></td>
+            <td>ภาษีถูกหัก ณ ที่จ่าย</td>
+            <td class="num dr">5,200.00</td>
+            <td class="num zero">—</td>
+            <td class="num">5,200.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">16010</span></td>
+            <td>อุปกรณ์</td>
+            <td class="num dr">820,000.00</td>
+            <td class="num zero">—</td>
+            <td class="num">820,000.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">16020</span></td>
+            <td>ค่าเสื่อมราคาสะสม</td>
+            <td class="num zero">—</td>
+            <td class="num cr">95,200.00</td>
+            <td class="num neg">(95,200.00)</td>
+          </tr>
+          <tr class="subtotal">
+            <td colspan="2"><strong>Total Assets</strong></td>
+            <td class="num">12,362,740.00</td>
+            <td class="num">7,971,940.00</td>
+            <td class="num"><strong>4,390,800.00</strong></td>
+          </tr>
+
+          <!-- LIABILITIES -->
+          <tr class="group-row"><td colspan="5">Liabilities · หนี้สิน</td></tr>
+          <tr>
+            <td><span class="code">21010</span></td>
+            <td>เจ้าหนี้การค้า · Accounts Payable</td>
+            <td class="num dr">2,847,300.00</td>
+            <td class="num cr">2,994,950.00</td>
+            <td class="num">147,650.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">21030</span></td>
+            <td>ค่านายหน้าหมอค้างจ่าย</td>
+            <td class="num dr">218,400.00</td>
+            <td class="num cr">256,800.00</td>
+            <td class="num">38,400.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">21110</span></td>
+            <td>ภาษีขาย · VAT Payable</td>
+            <td class="num dr">68,400.00</td>
+            <td class="num cr">141,240.00</td>
+            <td class="num">72,840.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">21120</span></td>
+            <td>ภาษีหัก ณ ที่จ่ายค้างจ่าย</td>
+            <td class="num dr">8,400.00</td>
+            <td class="num cr">21,200.00</td>
+            <td class="num">12,800.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">21210</span></td>
+            <td>เงินรับล่วงหน้าจากลูกค้า</td>
+            <td class="num dr">85,000.00</td>
+            <td class="num cr">200,000.00</td>
+            <td class="num">115,000.00</td>
+          </tr>
+          <tr class="subtotal">
+            <td colspan="2"><strong>Total Liabilities</strong></td>
+            <td class="num">3,227,500.00</td>
+            <td class="num">3,614,190.00</td>
+            <td class="num"><strong>386,690.00</strong></td>
+          </tr>
+
+          <!-- EQUITY -->
+          <tr class="group-row"><td colspan="5">Equity · ส่วนของผู้ถือหุ้น</td></tr>
+          <tr>
+            <td><span class="code">31010</span></td>
+            <td>ทุนเรือนหุ้น · Owner's Capital</td>
+            <td class="num zero">—</td>
+            <td class="num cr">2,000,000.00</td>
+            <td class="num">2,000,000.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">31020</span></td>
+            <td>กำไรสะสม · Retained Earnings</td>
+            <td class="num zero">—</td>
+            <td class="num cr">1,575,960.00</td>
+            <td class="num">1,575,960.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">31030</span></td>
+            <td>กำไรสุทธิประจำปี (ม.ค.–พ.ค. 2569)</td>
+            <td class="num zero">—</td>
+            <td class="num cr">428,150.00</td>
+            <td class="num">428,150.00</td>
+          </tr>
+          <tr class="subtotal">
+            <td colspan="2"><strong>Total Equity</strong></td>
+            <td class="num">—</td>
+            <td class="num">4,004,110.00</td>
+            <td class="num"><strong>4,004,110.00</strong></td>
+          </tr>
+
+          <!-- REVENUE -->
+          <tr class="group-row"><td colspan="5">Revenue · รายได้ (period to date)</td></tr>
+          <tr>
+            <td><span class="code">41010</span></td>
+            <td>รายได้ — Botox</td>
+            <td class="num zero">—</td>
+            <td class="num cr">512,400.00</td>
+            <td class="num">512,400.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">41020</span></td>
+            <td>รายได้ — Filler</td>
+            <td class="num zero">—</td>
+            <td class="num cr">387,600.00</td>
+            <td class="num">387,600.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">41030</span></td>
+            <td>รายได้ — เลเซอร์</td>
+            <td class="num zero">—</td>
+            <td class="num cr">218,800.00</td>
+            <td class="num">218,800.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">41040</span></td>
+            <td>รายได้ — ทรีตเมนต์ผิว</td>
+            <td class="num zero">—</td>
+            <td class="num cr">125,400.00</td>
+            <td class="num">125,400.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">42010</span></td>
+            <td>ขายผลิตภัณฑ์ดูแลผิว</td>
+            <td class="num zero">—</td>
+            <td class="num cr">43,340.00</td>
+            <td class="num">43,340.00</td>
+          </tr>
+          <tr class="subtotal">
+            <td colspan="2"><strong>Total Revenue</strong></td>
+            <td class="num">—</td>
+            <td class="num">1,287,540.00</td>
+            <td class="num"><strong>1,287,540.00</strong></td>
+          </tr>
+
+          <!-- EXPENSES -->
+          <tr class="group-row"><td colspan="5">Expenses · ค่าใช้จ่าย</td></tr>
+          <tr>
+            <td><span class="code">51010</span></td>
+            <td>ต้นทุนผลิตภัณฑ์ที่ใช้</td>
+            <td class="num dr">142,800.00</td>
+            <td class="num zero">—</td>
+            <td class="num">142,800.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">51020</span></td>
+            <td>ค่านายหน้าแพทย์</td>
+            <td class="num dr">256,800.00</td>
+            <td class="num zero">—</td>
+            <td class="num">256,800.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">61010</span></td>
+            <td>เงินเดือน</td>
+            <td class="num dr">315,000.00</td>
+            <td class="num zero">—</td>
+            <td class="num">315,000.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">61110</span></td>
+            <td>ค่าเช่า</td>
+            <td class="num dr">210,000.00</td>
+            <td class="num zero">—</td>
+            <td class="num">210,000.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">61120</span></td>
+            <td>ค่าไฟฟ้า</td>
+            <td class="num dr">23,400.00</td>
+            <td class="num zero">—</td>
+            <td class="num">23,400.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">61210</span></td>
+            <td>การตลาดออนไลน์</td>
+            <td class="num dr">75,000.00</td>
+            <td class="num zero">—</td>
+            <td class="num">75,000.00</td>
+          </tr>
+          <tr>
+            <td><span class="code">61320</span></td>
+            <td>ค่าธรรมเนียมบัตรเครดิต</td>
+            <td class="num dr">12,890.00</td>
+            <td class="num zero">—</td>
+            <td class="num">12,890.00</td>
+          </tr>
+          <tr class="subtotal">
+            <td colspan="2"><strong>Total Expenses</strong></td>
+            <td class="num">1,035,890.00</td>
+            <td class="num">—</td>
+            <td class="num"><strong>1,035,890.00</strong></td>
+          </tr>
+
+          <!-- GRAND TOTAL -->
+          <tr class="total">
+            <td colspan="2"><strong>GRAND TOTAL</strong></td>
+            <td class="num"><strong>16,626,130.00</strong></td>
+            <td class="num"><strong>16,877,780.00</strong></td>
+            <td class="num"><strong>—</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 12px; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; color: var(--text2); display: flex; gap: 24px;">
+      <span><span class="t-label">Generated</span> 7 พ.ค. 2569 14:23 น.</span>
+      <span><span class="t-label">Includes</span> 187 posted JEs</span>
+      <span><span class="t-label">Excludes</span> 3 draft, 5 voided</span>
+      <span><span class="t-label">Click any account</span> to drill into transactions</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

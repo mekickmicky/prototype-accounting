@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Journal Entry — WIND Accounting</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<style>
+  .je-form-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+  .lines-table th, .lines-table td { padding: 6px 8px; }
+  .lines-table .acct { width: 220px; }
+  .lines-table .desc { width: auto; }
+  .lines-table .amt { width: 130px; }
+  .lines-table .branch { width: 80px; }
+  .lines-table .actions { width: 40px; text-align: center; }
+  .totals-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 14px 18px;
+    width: 360px;
+    margin-left: auto;
+    font-family: var(--font-mono);
+  }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .totals-row.total {
+    border-top: 1px solid var(--border2);
+    padding-top: 12px;
+    margin-top: 6px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .totals-row.balance {
+    border-top: 2px solid var(--rose);
+    padding-top: 12px;
+    margin-top: 6px;
+    font-size: 16px;
+  }
+  .balanced { color: var(--credit); }
+  .unbalanced { color: var(--balance-neg); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">WIND<span class="accent">·</span>Accounting</div>
+    <div class="breadcrumb">General Ledger · Journal Entries · New</div>
+    <div class="spacer"></div>
+    <span class="pill">งวด: 2569-05</span>
+    <span class="pill">สมชาย บัญชี</span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="group">
+      <div class="group-label">Dashboard</div>
+      <a href="01-dashboard.html">Overview</a>
+    </div>
+    <div class="group">
+      <div class="group-label">General Ledger</div>
+      <a href="#">Chart of Accounts</a>
+      <a class="active" href="#">Journal Entries</a>
+      <a href="#">Periods</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Accounts Receivable</div>
+      <a href="#">Customers</a>
+      <a href="04-sales-invoice.html">Sales Invoices</a>
+      <a href="#">Receipts</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Tax</div>
+      <a href="05-pp30.html">ภพ.30</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Bank</div>
+      <a href="06-bank-reconcile.html">Reconciliation</a>
+    </div>
+    <div class="group">
+      <div class="group-label">Reports</div>
+      <a href="03-trial-balance.html">Trial Balance</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Journal Entry</h1>
+        <div class="subtitle">สร้างรายการบันทึกบัญชีใหม่ · DRAFT</div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-secondary">Save Draft</button>
+        <button class="btn btn-primary">Post Entry</button>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="je-form-grid mb-3">
+          <div>
+            <label class="label">Entry Date</label>
+            <input class="input" value="07/05/2569" />
+          </div>
+          <div>
+            <label class="label">Description</label>
+            <input class="input" value="บันทึกค่าโฆษณาออนไลน์ Facebook Ads — เม.ย. 2569" />
+          </div>
+          <div>
+            <label class="label">Branch</label>
+            <select class="select">
+              <option>TL — ทองหล่อ</option>
+              <option>EK — เอกมัย</option>
+              <option>RAMA9 — พระราม 9</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Source Type</label>
+            <select class="select">
+              <option>MANUAL</option>
+              <option>ADJUSTMENT</option>
+              <option>RECURRING</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="t-label mb-2" style="margin-top: 16px;">Lines · บรรทัดเดบิต/เครดิต</div>
+        <table class="acc-table lines-table">
+          <thead>
+            <tr>
+              <th class="acct">Account</th>
+              <th class="branch">Branch</th>
+              <th class="desc">Description</th>
+              <th class="amt right">Debit</th>
+              <th class="amt right">Credit</th>
+              <th class="actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="t-mono t-sm" style="color: var(--text);">61210 · การตลาดออนไลน์</div>
+              </td>
+              <td><span class="code">TL</span></td>
+              <td><span class="t-muted t-sm">Facebook Ads — TL branch</span></td>
+              <td class="num dr">25,000.00</td>
+              <td class="num zero">—</td>
+              <td><button class="btn btn-ghost btn-sm">×</button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="t-mono t-sm" style="color: var(--text);">14010 · ภาษีซื้อ</div>
+              </td>
+              <td><span class="code">TL</span></td>
+              <td><span class="t-muted t-sm">VAT 7% on Facebook Ads</span></td>
+              <td class="num dr">1,750.00</td>
+              <td class="num zero">—</td>
+              <td><button class="btn btn-ghost btn-sm">×</button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="t-mono t-sm" style="color: var(--text);">21010 · เจ้าหนี้การค้า</div>
+              </td>
+              <td><span class="code">TL</span></td>
+              <td><span class="t-muted t-sm">Marketing Agency 1</span></td>
+              <td class="num zero">—</td>
+              <td class="num cr">25,950.00</td>
+              <td><button class="btn btn-ghost btn-sm">×</button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="t-mono t-sm" style="color: var(--text);">21120 · ภาษีหัก ณ ที่จ่าย</div>
+              </td>
+              <td><span class="code">TL</span></td>
+              <td><span class="t-muted t-sm">WHT 3% (service)</span></td>
+              <td class="num zero">—</td>
+              <td class="num cr">800.00</td>
+              <td><button class="btn btn-ghost btn-sm">×</button></td>
+            </tr>
+            <tr>
+              <td colspan="6" style="padding: 8px;">
+                <button class="btn btn-ghost btn-sm">+ Add Line</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="totals-card" style="margin-top: 16px;">
+          <div class="totals-row">
+            <span style="color: var(--text2);">Total Debit</span>
+            <span class="text-debit">26,750.00</span>
+          </div>
+          <div class="totals-row">
+            <span style="color: var(--text2);">Total Credit</span>
+            <span class="text-credit">26,750.00</span>
+          </div>
+          <div class="totals-row balance">
+            <span>Difference</span>
+            <span class="balanced">0.00 ✓ Balanced</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JE history list -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">รายการล่าสุด · Recent Journal Entries</div>
+        <div class="flex gap-2">
+          <input class="input" style="width: 200px;" placeholder="ค้นหา JE no, description..." />
+          <select class="select" style="width: 140px;">
+            <option>All status</option>
+            <option>POSTED</option>
+            <option>DRAFT</option>
+            <option>VOID</option>
+          </select>
+          <button class="btn btn-secondary btn-sm">Export CSV</button>
+        </div>
+      </div>
+      <table class="acc-table">
+        <thead>
+          <tr>
+            <th>JE No</th>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Source</th>
+            <th>Branch</th>
+            <th class="right">Total Dr</th>
+            <th class="right">Total Cr</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="code">JE-2026-0156</span></td>
+            <td>07/05/69</td>
+            <td>Visit completed — สมชาย ใจดี · Botox 100U</td>
+            <td><span class="t-xs t-muted">SALES_INVOICE</span></td>
+            <td>TL</td>
+            <td class="num">9,900.00</td>
+            <td class="num">9,900.00</td>
+            <td><span class="badge badge-posted">Posted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code">JE-2026-0155</span></td>
+            <td>07/05/69</td>
+            <td>Receipt — สมชาย ใจดี</td>
+            <td><span class="t-xs t-muted">RECEIPT</span></td>
+            <td>TL</td>
+            <td class="num">9,900.00</td>
+            <td class="num">9,900.00</td>
+            <td><span class="badge badge-posted">Posted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code">JE-2026-0154</span></td>
+            <td>07/05/69</td>
+            <td>Sales Invoice — ลิซ่า มโนพงษ์ · Filler HA</td>
+            <td><span class="t-xs t-muted">SALES_INVOICE</span></td>
+            <td>TL</td>
+            <td class="num">8,500.00</td>
+            <td class="num">8,500.00</td>
+            <td><span class="badge badge-posted">Posted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code">JE-2026-0153</span></td>
+            <td>06/05/69</td>
+            <td>Payment — Allergan Thailand</td>
+            <td><span class="t-xs t-muted">PAYMENT</span></td>
+            <td>TL</td>
+            <td class="num">45,000.00</td>
+            <td class="num">45,000.00</td>
+            <td><span class="badge badge-posted">Posted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code">JE-2026-0152</span></td>
+            <td>06/05/69</td>
+            <td>Bank fee — KBank monthly</td>
+            <td><span class="t-xs t-muted">MANUAL</span></td>
+            <td>TL</td>
+            <td class="num">300.00</td>
+            <td class="num">300.00</td>
+            <td><span class="badge badge-posted">Posted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code">JE-2026-0151</span></td>
+            <td>05/05/69</td>
+            <td>Bill — Landlord Suthep · Rent May TL</td>
+            <td><span class="t-xs t-muted">BILL</span></td>
+            <td>TL</td>
+            <td class="num">89,600.00</td>
+            <td class="num">89,600.00</td>
+            <td><span class="badge badge-posted">Posted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code">JE-2026-0150</span></td>
+            <td>05/05/69</td>
+            <td>Adjustment — Misc expense correction</td>
+            <td><span class="t-xs t-muted">ADJUSTMENT</span></td>
+            <td>—</td>
+            <td class="num" style="opacity:.5;">2,500.00</td>
+            <td class="num" style="opacity:.5;">2,500.00</td>
+            <td><span class="badge badge-void">Void</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>
