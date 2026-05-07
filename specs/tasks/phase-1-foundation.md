@@ -263,7 +263,7 @@ T-1.1 (monorepo)
 - **Done when:** Logged-in user lands on dashboard; logged-out user is redirected to `/login`
 
 ### T-1.16 — Env config + dev/deploy setup
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `.env.example`, `apps/api/.env.example`, `apps/web/.env.example`, `docker-compose.yml`, `README.md` (EDIT) (NEW where listed)
 - **Reads:** CLAUDE.md §Tech Stack, specs/11 §Phase 1 task 9
