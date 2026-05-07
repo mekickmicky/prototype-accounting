@@ -74,7 +74,7 @@ T-1.1 (monorepo)
 - **Done when:** `<Button>` from `@/components/ui/button` renders, `npx shadcn add` works
 
 ### T-1.3 — Prisma schema (all 29 models)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/prisma/schema.prisma` (NEW)
 - **Reads:** specs/01-domain-model.md (full)

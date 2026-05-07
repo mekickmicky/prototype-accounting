@@ -9,7 +9,8 @@ services:
       POSTGRES_DB: wind_accounting
       TZ: Asia/Bangkok
     ports:
-      - "5432:5432"
+      # Host port 5433 (5432 reserved for any host-installed Postgres on the dev machine)
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
