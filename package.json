@@ -1,0 +1,28 @@
+{
+  "name": "wind-accounting",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"bun run --cwd apps/api dev\" \"bun run --cwd apps/web dev\"",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "build": "bun run --cwd apps/api build && bun run --cwd apps/web build",
+    "lint": "bun run --cwd apps/web lint",
+    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck",
+    "db:migrate": "bun run --cwd apps/api db:migrate",
+    "db:seed": "bun run --cwd apps/api db:seed",
+    "db:reset": "bun run --cwd apps/api db:reset",
+    "db:studio": "bun run --cwd apps/api db:studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  }
+}

@@ -45,7 +45,7 @@ T-1.1 (monorepo)
 ## Tasks
 
 ### T-1.1 — Monorepo scaffold (Bun workspaces)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `package.json`, `bun.lockb`, `apps/api/package.json`, `apps/web/package.json`, `tsconfig.base.json`, `.gitignore` (NEW)
 - **Reads:** CLAUDE.md §Tech Stack, specs/11 §Phase 1 task 1

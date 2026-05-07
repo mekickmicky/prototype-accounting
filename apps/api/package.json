@@ -1,0 +1,23 @@
+{
+  "name": "@wind-acc/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "bunx prisma migrate dev",
+    "db:seed": "bun run prisma/seed.ts",
+    "db:reset": "bunx prisma migrate reset --force",
+    "db:studio": "bunx prisma studio"
+  },
+  "dependencies": {
+    "elysia": "^1.4.28"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.13",
+    "typescript": "^5.7.2"
+  }
+}
