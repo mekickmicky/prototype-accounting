@@ -12,6 +12,9 @@ build/
 # Bun
 bun.lockb
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Environment
 .env
 .env.local

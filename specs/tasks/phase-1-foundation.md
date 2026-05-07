@@ -140,7 +140,7 @@ T-1.1 (monorepo)
 - **Done when:** Theme tokens visible in DevTools; `font-family: 'Sarabun'` applied to body
 
 ### T-1.7 — Reusable UI components scaffold
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/ui/money-input.tsx`, `money-display.tsx`, `status-badge.tsx`, `data-table.tsx`, `confirm-dialog.tsx`, `empty-state.tsx`, `page-header.tsx`, `filter-bar.tsx` (NEW)
 - **Reads:** specs/04 §Component Inventory, specs/06 §Components
@@ -155,7 +155,7 @@ T-1.1 (monorepo)
 - **Done when:** Storybook-style demo page at `/dev/components` renders all 8 with sample data
 
 ### T-1.8 — Base layout (sidebar + topbar)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/layout.tsx`, `apps/web/src/components/layout/sidebar.tsx`, `topbar.tsx` (NEW)
 - **Reads:** specs/06 §Layout patterns, specs/04 §Module Overview, wireframes/01-dashboard.html
@@ -170,7 +170,7 @@ T-1.1 (monorepo)
 - **Done when:** Layout renders at any `/(authenticated)/*` route; 9 sidebar groups visible; clicking unimplemented links is a no-op or 404 placeholder
 
 ### T-1.9 — Theme toggle (dark/light)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/theme-toggle.tsx`, `apps/web/src/lib/theme.ts` (NEW)
 - **Reads:** specs/06 §Theme
@@ -184,7 +184,7 @@ T-1.1 (monorepo)
 - **Done when:** Click toggle → instant theme swap, persists across reload
 
 ### T-1.10 — Seed: Chart of Accounts
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** DeepSeek
 - **Files:** `apps/api/prisma/seed/accounts.ts` (NEW)
 - **Reads:** specs/10-seed-data.md §Chart of Accounts
@@ -194,7 +194,7 @@ T-1.1 (monorepo)
 - **Done when:** `bun run db:seed` inserts ~80–120 accounts; tree query shows correct hierarchy; all required postable accounts referenced in spec 02 §4 exist (12010, 21110, 14010, 14020, 21120, 21210, 31030, 31020, etc.)
 
 ### T-1.11 — Seed: periods, users, branches, bank accounts, settings
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `apps/api/prisma/seed/periods.ts`, `users.ts`, `bank-accounts.ts`, `settings.ts`, `apps/api/prisma/seed.ts` (orchestrator) (NEW)
 - **Reads:** specs/10 §Periods, Users, Bank, Settings; specs/04 §1.2 (roles)
@@ -209,7 +209,7 @@ T-1.1 (monorepo)
 - **Done when:** `bun run db:seed` is idempotent (uses upsert); login dropdown shows 5 users; account_map JSON returns all required keys
 
 ### T-1.12 — JWT cookie middleware (Elysia)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/auth.ts`, `apps/api/src/middleware/auth-guard.ts` (NEW)
 - **Reads:** specs/04 §1.1, specs/05 §Authentication
@@ -223,7 +223,7 @@ T-1.1 (monorepo)
 - **Done when:** Unit test: valid token → ctx.user populated; invalid → 401; wrong role → 403
 
 ### T-1.13 — Auth API endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/auth.ts` (NEW)
 - **Reads:** specs/05 §Auth Endpoints
@@ -237,7 +237,7 @@ T-1.1 (monorepo)
 - **Done when:** `curl -X POST .../auth/login -d '{"user_id":"<seeded-id>"}'` sets cookie; subsequent `/auth/me` returns the user
 
 ### T-1.14 — Login page + useUser hook
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/login/page.tsx`, `apps/web/src/lib/use-user.ts`, `apps/web/src/lib/api-client.ts` (NEW)
 - **Reads:** specs/04 §1.1, specs/06 §Login
@@ -250,7 +250,7 @@ T-1.1 (monorepo)
 - **Done when:** Manual flow: visit `/login` → select user → land on `/dashboard` → `useUser()` returns the user
 
 ### T-1.15 — Dashboard placeholder + routing shell
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `apps/web/src/app/(authenticated)/dashboard/page.tsx`, `apps/web/src/middleware.ts` (NEW)
 - **Reads:** specs/06 §Dashboard, wireframes/01-dashboard.html (skeleton only — full dashboard is a later phase)

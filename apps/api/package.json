@@ -15,9 +15,16 @@
   },
   "dependencies": {
     "@prisma/client": "^6",
-    "elysia": "^1.4.28"
+    "@react-pdf/renderer": "^4.3.0",
+    "@wind-acc/shared": "workspace:*",
+    "elysia": "^1.4.28",
+    "exceljs": "^4.4.0",
+    "jose": "^6.2.3",
+    "react": "^19.2.4",
+    "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@types/react": "^19",
     "bun-types": "^1.3.13",
     "prisma": "^6",
     "typescript": "^5.7.2"

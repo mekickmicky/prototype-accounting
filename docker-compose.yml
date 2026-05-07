@@ -27,7 +27,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@wind.local
+      PGADMIN_DEFAULT_EMAIL: admin@wind.dev
       PGADMIN_DEFAULT_PASSWORD: wind_dev
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
@@ -36,6 +36,40 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: wind-acc-langfuse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse_dev
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  langfuse-server:
+    image: langfuse/langfuse:2
+    container_name: wind-acc-langfuse
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3030:3000"
+    environment:
+      DATABASE_URL: "postgresql://langfuse:langfuse_dev@langfuse-db:5432/langfuse"
+      NEXTAUTH_SECRET: "wind-acc-dev-only-nextauth-secret-changeme"
+      SALT: "wind-acc-dev-only-salt-changeme"
+      NEXTAUTH_URL: "http://localhost:3030"
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+
 volumes:
   postgres_data:
   pgadmin_data:
+  langfuse_db_data:

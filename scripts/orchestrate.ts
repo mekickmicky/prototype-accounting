@@ -1,11 +1,24 @@
 #!/usr/bin/env bun
 // WIND Accounting — Parallel Task Orchestrator
-// Reads specs/tasks/phase-*.md, parses tasks, manages tmux session of child Claude sessions.
+// Reads specs/tasks/phase-*.md, parses tasks, manages zellij session of child Claude sessions.
 
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
+import Langfuse from 'langfuse';
+
+// Langfuse is optional — if keys are missing we no-op every call.
+const lf: Langfuse | null =
+  process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY
+    ? new Langfuse({
+        publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+        secretKey: process.env.LANGFUSE_SECRET_KEY,
+        baseUrl: process.env.LANGFUSE_HOST ?? 'http://localhost:3030',
+        flushAt: 5,
+        flushInterval: 10_000,
+      })
+    : null;
 
 const ROOT = '/Users/mekick/code/PROTOTYPE/prototype-accounting';
 const TASKS_DIR = join(ROOT, 'specs/tasks');
@@ -15,6 +28,19 @@ const MAX_PARALLEL = parseInt(process.env.MAX_PARALLEL ?? '3', 10);
 
 type Status = 'todo' | 'wip' | 'done' | 'blocked';
 type Model = 'Opus' | 'Sonnet' | 'DeepSeek';
+
+// Runtime override: when DEEPSEEK_FALLBACK is set to Sonnet or Opus, tasks
+// planned as DeepSeek run on the fallback model instead. The task spec
+// (Planned Model) stays as DeepSeek — only execution changes. Unset to
+// resume normal DeepSeek routing.
+const DEEPSEEK_FALLBACK = (process.env.DEEPSEEK_FALLBACK ?? '').trim();
+
+function effectiveModel(planned: Model): Model {
+  if (planned === 'DeepSeek' && (DEEPSEEK_FALLBACK === 'Sonnet' || DEEPSEEK_FALLBACK === 'Opus')) {
+    return DEEPSEEK_FALLBACK as Model;
+  }
+  return planned;
+}
 
 interface Task {
   id: string;
@@ -92,6 +118,43 @@ function parseDeps(raw: string): string[] {
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+// Extract file paths from a task's Files: field. Files are wrapped in
+// backticks; annotations like (NEW) / (EDIT) are stripped.
+function extractFiles(filesField: string): string[] {
+  if (!filesField) return [];
+  return [...filesField.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim());
+}
+
+// Two tasks "conflict" if they list the same backticked path. This is the
+// minimum bar to prevent obvious lockfile / shared-package races. Globs and
+// directory-level overlap are NOT detected — keep file lists in task specs
+// at file-path granularity for this to work.
+function fileConflicts(
+  toSpawn: Task[],
+  wipTasks: Task[],
+): Array<{ taskId: string; file: string; ownerId: string; reason: 'wip' | 'batch' }> {
+  const conflicts: Array<{ taskId: string; file: string; ownerId: string; reason: 'wip' | 'batch' }> = [];
+  const wipFiles = new Map<string, string>();
+  for (const t of wipTasks) {
+    for (const f of extractFiles(t.files)) wipFiles.set(f, t.id);
+  }
+  const batchFiles = new Map<string, string>();
+  for (const t of toSpawn) {
+    for (const f of extractFiles(t.files)) {
+      if (wipFiles.has(f)) {
+        conflicts.push({ taskId: t.id, file: f, ownerId: wipFiles.get(f)!, reason: 'wip' });
+      }
+      const prior = batchFiles.get(f);
+      if (prior && prior !== t.id) {
+        conflicts.push({ taskId: t.id, file: f, ownerId: prior, reason: 'batch' });
+      } else {
+        batchFiles.set(f, t.id);
+      }
+    }
+  }
+  return conflicts;
+}
+
 // ---------------- Ready ----------------
 
 function depSatisfied(dep: string, tasks: Task[]): boolean {
@@ -144,82 +207,97 @@ async function setStatus(task: Task, newStatus: Status, suffix: string): Promise
   await writeFile(task.file, updated);
 }
 
-// ---------------- Tmux ----------------
+// ---------------- Zellij ----------------
 
-function tmuxAvailable(): boolean {
-  return spawnSync('which', ['tmux']).status === 0;
+function zellijAvailable(): boolean {
+  return spawnSync('which', ['zellij']).status === 0;
 }
 
 function sessionExists(): boolean {
-  return spawnSync('tmux', ['has-session', '-t', SESSION]).status === 0;
+  const r = spawnSync('zellij', ['list-sessions', '--short'], { encoding: 'utf-8' });
+  return r.status === 0 && r.stdout.split('\n').some((l) => l.trim() === SESSION);
 }
 
 function ensureSession(): void {
-  if (!sessionExists()) {
-    spawnSync('tmux', ['new-session', '-d', '-s', SESSION, '-n', 'orchestrator', 'zsh', '-i']);
-  }
+  if (sessionExists()) return;
+  // Zellij has no --detached flag; spawn without a TTY so the server starts headless.
+  const child = spawn('zellij', ['--session', SESSION], { detached: true, stdio: 'ignore' });
+  child.unref();
+  spawnSync('sleep', ['1']);
 }
 
 function listWindows(): string[] {
-  if (!tmuxAvailable() || !sessionExists()) return [];
-  const r = spawnSync('tmux', ['list-windows', '-t', SESSION, '-F', '#{window_name}'], {
+  if (!zellijAvailable() || !sessionExists()) return [];
+  const r = spawnSync('zellij', ['--session', SESSION, 'action', 'query-tab-names'], {
     encoding: 'utf-8',
   });
   return r.stdout.trim().split('\n').filter((n) => n.startsWith('T-'));
 }
 
 function providerFor(model: Model): { alias: string; flags: string } {
-  // bypassPermissions for spawned workers: they're sandboxed to one task spec,
-  // run in their own tmux pane, and template forbids git commits / cross-task
-  // edits. acceptEdits stalled workers on every bash command (verification curls,
+  // -p (print mode): worker runs the prompt to completion then exits. Without
+  // this, claude stays in interactive mode after marking the task done — the
+  // process lingers waiting for the next prompt, eating credits and creating
+  // orphan workers across sessions.
+  // bypassPermissions: workers are sandboxed to one task spec, run in their
+  // own zellij tab, and the template forbids git commits / cross-task edits.
+  // acceptEdits stalled workers on every bash command (verification curls,
   // dev-server starts, prisma migrate). Bypass keeps them productive — the
   // prompt template is the actual safety boundary.
   if (model === 'DeepSeek') {
-    return { alias: 'ai-deepseek', flags: '--permission-mode bypassPermissions' };
+    return { alias: 'ai-deepseek', flags: '-p --permission-mode bypassPermissions' };
   }
   const cliModel = model === 'Opus' ? 'opus' : 'sonnet';
   return {
     alias: 'ai-anthropic',
-    flags: `--model ${cliModel} --permission-mode bypassPermissions`,
+    flags: `-p --model ${cliModel} --permission-mode bypassPermissions`,
   };
 }
 
 function buildLaunchCommand(task: Task): string {
   const today = new Date().toISOString().slice(0, 10);
+  const eff = effectiveModel(task.model);
   const template = readFileSync(TEMPLATE_PATH, 'utf-8');
   const prompt = template
     .replaceAll('{{ID}}', task.id)
     .replaceAll('{{PHASE_FILE}}', task.file)
-    .replaceAll('{{MODEL}}', task.model)
+    .replaceAll('{{MODEL}}', eff)
     .replaceAll('{{TODAY}}', today);
 
   // Single-quote escape for shell
   const promptQuoted = `'${prompt.replace(/'/g, `'\\''`)}'`;
-  const provider = providerFor(task.model);
+  const provider = providerFor(eff);
   return `cd ${ROOT} && ${provider.alias} && claude ${provider.flags} ${promptQuoted}`;
 }
+
+function notify(type: 'start' | 'done' | 'blocked' | 'error' | 'info', taskId: string, message: string): void {
+  // Fire-and-forget — notify.ts no-ops if env not configured.
+  spawnSync('bun', [join(ROOT, 'scripts/notify.ts'), type, taskId, message], {
+    cwd: ROOT,
+    stdio: 'ignore',
+  });
+}
+
+// Active spans keyed by task id — opened on spawn, closed on done/blocked.
+const activeSpans = new Map<string, ReturnType<ReturnType<Langfuse['trace']>['span']>>();
+let autoTrace: ReturnType<Langfuse['trace']> | null = null;
 
 function spawnInPane(task: Task, dryRun: boolean): string {
   const cmd = buildLaunchCommand(task);
   if (dryRun) {
-    console.log(`# ${task.id} (${task.model}) — would run in tmux:${SESSION}:${task.id}`);
+    console.log(`# ${task.id} (${task.model}) — would run in zellij:${SESSION}:${task.id}`);
     console.log(cmd);
     return cmd;
   }
   ensureSession();
-  // Use -P -F to print the pane ID; window names with dots (e.g. "T-1.4") confuse
-  // tmux target parsing because ":" + dotted name is read as window:pane index.
-  // Targeting by stable %paneId avoids that ambiguity entirely.
-  const newWindow = spawnSync(
-    'tmux',
-    ['new-window', '-P', '-F', '#{pane_id}', '-t', SESSION, '-n', task.id, 'zsh', '-i'],
+  // Launch zsh -i so ~/.zshrc aliases (ai-anthropic etc.) are available.
+  // Append `; exec zsh -i` so the tab stays open as an interactive shell after claude exits.
+  const result = spawnSync(
+    'zellij',
+    ['--session', SESSION, 'action', 'new-tab', '--name', task.id, '--', 'zsh', '-i', '-c', `${cmd}; exec zsh -i`],
     { encoding: 'utf-8' },
   );
-  const paneId = newWindow.stdout?.trim();
-  if (!paneId) throw new Error(`Failed to create tmux window for ${task.id}`);
-  // Give the interactive shell a moment to load aliases from ~/.zshrc.
-  spawnSync('sleep', ['0.5']);
-  spawnSync('tmux', ['send-keys', '-t', paneId, cmd, 'Enter']);
+  if (result.status !== 0) throw new Error(`Failed to create zellij tab for ${task.id}: ${result.stderr}`);
   return cmd;
 }
 
@@ -262,8 +340,8 @@ async function cmdReady(): Promise<void> {
 }
 
 async function cmdSpawn(ids: string[], dryRun: boolean): Promise<void> {
-  if (!tmuxAvailable() && !dryRun) {
-    console.error('tmux not installed. Run: brew install tmux');
+  if (!zellijAvailable() && !dryRun) {
+    console.error('zellij not installed. Run: brew install zellij');
     process.exit(1);
   }
   const tasks = await parseAllTasks();
@@ -276,7 +354,10 @@ async function cmdSpawn(ids: string[], dryRun: boolean): Promise<void> {
     process.exit(1);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Resolve all requested tasks before spawning so we can check file conflicts
+  // across the whole batch + against current WIP. Skip tasks that aren't
+  // valid; the conflict check runs only on the survivors.
+  const candidates: Task[] = [];
   for (const id of ids) {
     const t = tasks.find((x) => x.id === id);
     if (!t) {
@@ -291,19 +372,55 @@ async function cmdSpawn(ids: string[], dryRun: boolean): Promise<void> {
       console.error(`${id}: deps not satisfied: ${t.depends.join(', ')}`);
       continue;
     }
+    candidates.push(t);
+  }
+
+  const force = process.argv.includes('--force');
+  const wip = tasks.filter((t) => t.status === 'wip');
+  const conflicts = fileConflicts(candidates, wip);
+  if (conflicts.length > 0) {
+    console.error(`File conflicts detected (${conflicts.length}):`);
+    for (const c of conflicts) {
+      const where = c.reason === 'wip' ? 'currently WIP' : 'in this batch';
+      console.error(`  ${c.taskId} ↔ ${c.ownerId} (${where}): ${c.file}`);
+    }
+    if (!force) {
+      console.error(
+        '\nRefusing to spawn. Re-run with --force to override (risk: lockfile/migration races, lost edits).',
+      );
+      process.exit(1);
+    }
+    console.error('--force given; proceeding anyway.');
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  for (const t of candidates) {
+    const id = t.id;
     if (!dryRun) {
       await setStatus(t, 'wip', `In progress (${today}, pane ${SESSION}:${id})`);
     }
     spawnInPane(t, dryRun);
     if (!dryRun) {
-      console.log(`Spawned ${id} (${t.model}) in tmux pane '${SESSION}:${id}'`);
+      const eff = effectiveModel(t.model);
+      const modelTag = eff === t.model ? eff : `${t.model} → ${eff}`;
+      console.log(`Spawned ${id} (${modelTag}) in zellij tab '${SESSION}:${id}'`);
+      notify('start', t.id, `${t.name} [${modelTag}]`);
+      if (lf) {
+        const parent = autoTrace ?? lf.trace({ name: `spawn:${id}`, sessionId: SESSION });
+        const span = parent.span({
+          name: id,
+          input: { task: t.name, model: modelTag, files: t.files, phase: t.phase },
+          metadata: { doneWhen: t.doneWhen, blocks: t.blocks },
+        });
+        activeSpans.set(id, span);
+      }
     }
   }
   if (!dryRun) {
     console.log('');
-    console.log(`Attach: tmux attach -t ${SESSION}`);
-    console.log('  Ctrl-b n / p   switch panes');
-    console.log('  Ctrl-b d       detach (panes keep running)');
+    console.log(`Attach: zellij attach ${SESSION}`);
+    console.log('  Ctrl-t [arrows]   switch tabs');
+    console.log('  Ctrl-\\ d          detach (tabs keep running)');
   }
 }
 
@@ -323,11 +440,11 @@ async function cmdStatus(): Promise<void> {
     console.log('\nBlocked:');
     for (const t of blocked) console.log(`  ${t.id}  [${t.model}]  ${t.name}`);
   }
-  if (tmuxAvailable() && sessionExists()) {
+  if (zellijAvailable() && sessionExists()) {
     const w = listWindows();
-    console.log(`\nTmux session '${SESSION}' panes: ${w.length > 0 ? w.join(', ') : '(none)'}`);
+    console.log(`\nZellij session '${SESSION}' tabs: ${w.length > 0 ? w.join(', ') : '(none)'}`);
   } else {
-    console.log(`\nTmux session '${SESSION}': not running`);
+    console.log(`\nZellij session '${SESSION}': not running`);
   }
 }
 
@@ -341,6 +458,13 @@ async function cmdDone(id: string): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
   await setStatus(t, 'done', `Done (${today})`);
   console.log(`Marked ${id} as done.`);
+  notify('done', t.id, t.name);
+  const span = activeSpans.get(id);
+  if (span) {
+    span.end({ output: { status: 'done' }, level: 'DEFAULT' });
+    activeSpans.delete(id);
+    await lf?.flushAsync();
+  }
 }
 
 async function cmdSchedule(): Promise<void> {
@@ -409,10 +533,277 @@ async function cmdSchedule(): Promise<void> {
 }
 
 function cmdAttach(): void {
-  console.log(`tmux attach -t ${SESSION}`);
-  console.log('  Ctrl-b n   next pane');
-  console.log('  Ctrl-b p   prev pane');
-  console.log('  Ctrl-b d   detach (panes keep running)');
+  console.log(`zellij attach ${SESSION}`);
+  console.log('  Ctrl-t [arrows]   next / prev tab');
+  console.log('  Ctrl-\\ d          detach (tabs keep running)');
+}
+
+// ---------------- Auto loop ----------------
+
+interface AutoOpts {
+  phases: Set<number> | null;
+  include: Set<string> | null;
+  exclude: Set<string>;
+  maxTasks: number;
+  maxCycles: number;
+  stopOnBlocked: boolean;
+  stopOnError: number;
+  delaySec: number;
+  dryRun: boolean;
+}
+
+const STOP_FILE = join(ROOT, '.orchestrator.stop');
+
+function parseAutoArgs(rest: string[]): AutoOpts {
+  function getFlag(name: string): string | undefined {
+    const idx = rest.indexOf(name);
+    return idx >= 0 ? rest[idx + 1] : undefined;
+  }
+  const phaseRaw = getFlag('--phase');
+  const includeRaw = getFlag('--include');
+  const excludeRaw = getFlag('--exclude');
+  return {
+    phases: phaseRaw ? new Set(phaseRaw.split(',').map((s) => parseInt(s.trim(), 10))) : null,
+    include: includeRaw ? new Set(includeRaw.split(',').map((s) => s.trim())) : null,
+    exclude: new Set((excludeRaw ?? '').split(',').map((s) => s.trim()).filter(Boolean)),
+    maxTasks: parseInt(getFlag('--max-tasks') ?? '0', 10) || Infinity,
+    maxCycles: parseInt(getFlag('--max-cycles') ?? '0', 10) || Infinity,
+    stopOnBlocked: rest.includes('--stop-on-blocked'),
+    stopOnError: parseInt(getFlag('--stop-on-error') ?? '3', 10),
+    delaySec: Math.max(10, parseInt(getFlag('--delay') ?? '30', 10)),
+    dryRun: rest.includes('--dry-run'),
+  };
+}
+
+function selectBatch(tasks: Task[], slots: number, opts: AutoOpts): Task[] {
+  if (slots <= 0) return [];
+  const candidates = ready(tasks).filter((t) => {
+    if (opts.exclude.has(t.id)) return false;
+    if (opts.include) return opts.include.has(t.id);
+    if (opts.phases) return opts.phases.has(t.phase);
+    return true;
+  });
+  // Walk in sort order, skip any candidate whose files conflict with already
+  // picked or current WIP. Phase ascending then ID ascending is the existing
+  // ready() sort order — same priority used in interactive flow.
+  const wip = tasks.filter((t) => t.status === 'wip');
+  const picked: Task[] = [];
+  for (const c of candidates) {
+    if (picked.length >= slots) break;
+    const trial = [...picked, c];
+    if (fileConflicts(trial, wip).length === 0) picked.push(c);
+  }
+  return picked;
+}
+
+async function checkStopFile(): Promise<boolean> {
+  try {
+    const fs = await import('node:fs/promises');
+    await fs.access(STOP_FILE);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function removeStopFile(): Promise<void> {
+  try {
+    const fs = await import('node:fs/promises');
+    await fs.unlink(STOP_FILE);
+  } catch {
+    // ignore
+  }
+}
+
+function notifyAuto(message: string): void {
+  spawnSync('bun', [join(ROOT, 'scripts/notify.ts'), 'info', message], {
+    cwd: ROOT,
+    stdio: 'ignore',
+  });
+}
+
+// Healthchecks.io heartbeat. Set HEALTHCHECK_PING_URL in env (the full URL
+// from your check, e.g. https://hc-ping.com/<uuid>). If unset, no-op.
+// Suffixes:
+//   /start  — auto loop began
+//   (none)  — heartbeat / cycle ok
+//   /fail   — abnormal exit (signal / max-cycles / error stop)
+//   /<n>    — exit code (not used here, but supported by HC)
+async function healthcheckPing(suffix: '' | '/start' | '/fail' = ''): Promise<void> {
+  const base = process.env.HEALTHCHECK_PING_URL;
+  if (!base) return;
+  const url = `${base.replace(/\/+$/, '')}${suffix}`;
+  try {
+    await fetch(url, { method: 'POST', signal: AbortSignal.timeout(10_000) });
+  } catch {
+    // never fail the orchestrator on a missed ping
+  }
+}
+
+async function cmdAuto(rest: string[]): Promise<void> {
+  if (!zellijAvailable()) {
+    console.error('zellij not installed. Run: brew install zellij');
+    process.exit(1);
+  }
+  const opts = parseAutoArgs(rest);
+  console.log('Auto orchestrator starting:');
+  console.log(`  phase filter:    ${opts.phases ? [...opts.phases].join(',') : 'all'}`);
+  console.log(`  include filter:  ${opts.include ? [...opts.include].join(',') : '—'}`);
+  console.log(`  exclude filter:  ${opts.exclude.size > 0 ? [...opts.exclude].join(',') : '—'}`);
+  console.log(`  delay:           ${opts.delaySec}s`);
+  console.log(`  max tasks:       ${opts.maxTasks === Infinity ? '∞' : opts.maxTasks}`);
+  console.log(`  max cycles:      ${opts.maxCycles === Infinity ? '∞' : opts.maxCycles}`);
+  console.log(`  stop on blocked: ${opts.stopOnBlocked}`);
+  console.log(`  stop file:       ${STOP_FILE}`);
+  console.log(`  dry-run:         ${opts.dryRun}`);
+  console.log('');
+
+  notifyAuto(
+    `🤖 auto started (phase=${opts.phases ? [...opts.phases].join(',') : 'all'}, delay=${opts.delaySec}s)`,
+  );
+  await healthcheckPing('/start');
+  if (lf) {
+    autoTrace = lf.trace({
+      name: 'auto-orchestrator',
+      sessionId: SESSION,
+      input: {
+        phases: opts.phases ? [...opts.phases] : 'all',
+        maxParallel: MAX_PARALLEL,
+        delaySec: opts.delaySec,
+      },
+    });
+  }
+
+  let cycleCount = 0;
+  let consecutiveEmptyCycles = 0;
+  const startedThisRun: string[] = [];
+  const seenWip = new Set<string>();
+  const seenDone = new Set<string>();
+  const seenBlocked = new Set<string>();
+
+  let stopReason = '';
+
+  // Graceful shutdown on Ctrl-C / SIGTERM
+  let interrupted = false;
+  const onSignal = (sig: string) => {
+    interrupted = true;
+    stopReason = `signal ${sig}`;
+  };
+  process.on('SIGINT', () => onSignal('SIGINT'));
+  process.on('SIGTERM', () => onSignal('SIGTERM'));
+
+  while (!interrupted) {
+    cycleCount += 1;
+    if (cycleCount > opts.maxCycles) {
+      stopReason = `max-cycles ${opts.maxCycles} reached`;
+      break;
+    }
+    if (await checkStopFile()) {
+      stopReason = 'stop file present';
+      await removeStopFile();
+      break;
+    }
+
+    const tasks = await parseAllTasks();
+    const counts = countByStatus(tasks);
+
+    // Track transitions for telemetry / done counter
+    for (const t of tasks) {
+      if (t.status === 'done' && !seenDone.has(t.id)) seenDone.add(t.id);
+      if (t.status === 'blocked' && !seenBlocked.has(t.id)) seenBlocked.add(t.id);
+      if (t.status === 'wip' && !seenWip.has(t.id)) seenWip.add(t.id);
+    }
+
+    if (counts.done === tasks.length) {
+      stopReason = 'all tasks done';
+      break;
+    }
+    if (counts.wip === 0 && ready(tasks).length === 0) {
+      stopReason = 'no ready tasks and no WIP — nothing to progress';
+      break;
+    }
+    if (opts.stopOnBlocked && counts.blocked > 0) {
+      stopReason = `blocked task detected (${counts.blocked})`;
+      break;
+    }
+    const doneSinceStart = startedThisRun.filter((id) =>
+      tasks.find((t) => t.id === id && t.status === 'done'),
+    ).length;
+    if (doneSinceStart >= opts.maxTasks) {
+      stopReason = `max-tasks ${opts.maxTasks} reached`;
+      break;
+    }
+
+    const slots = MAX_PARALLEL - counts.wip;
+    const batch = selectBatch(tasks, slots, opts);
+
+    // Distinguish "filter excluded everything" (expected: chain waiting) from
+    // "filter let things through but file-conflict blocked all picks" (real
+    // problem worth stopping for).
+    const filteredCandidates = ready(tasks).filter((t) => {
+      if (opts.exclude.has(t.id)) return false;
+      if (opts.include) return opts.include.has(t.id);
+      if (opts.phases) return opts.phases.has(t.phase);
+      return true;
+    });
+
+    if (batch.length === 0) {
+      const conflictBlocked =
+        filteredCandidates.length > 0 && slots > 0 && batch.length === 0;
+      if (conflictBlocked) {
+        consecutiveEmptyCycles += 1;
+      } else {
+        consecutiveEmptyCycles = 0;
+      }
+      if (conflictBlocked && consecutiveEmptyCycles >= opts.stopOnError) {
+        stopReason = `${consecutiveEmptyCycles} consecutive cycles where filtered candidates exist but file conflicts blocked all spawn`;
+        break;
+      }
+      console.log(
+        `[cycle ${cycleCount}] wip=${counts.wip}/${MAX_PARALLEL} done=${counts.done}/${tasks.length} — no spawn (idle)`,
+      );
+      autoTrace?.event({ name: 'cycle:idle', metadata: { cycle: cycleCount, wip: counts.wip, done: counts.done, total: tasks.length } });
+    } else {
+      consecutiveEmptyCycles = 0;
+      console.log(
+        `[cycle ${cycleCount}] wip=${counts.wip}/${MAX_PARALLEL} done=${counts.done}/${tasks.length} — spawning: ${batch.map((t) => t.id).join(', ')}`,
+      );
+      autoTrace?.event({ name: 'cycle:spawn', metadata: { cycle: cycleCount, spawned: batch.map((t) => t.id), wip: counts.wip, done: counts.done, total: tasks.length } });
+      if (!opts.dryRun) {
+        await cmdSpawn(batch.map((t) => t.id), false);
+        for (const t of batch) startedThisRun.push(t.id);
+      } else {
+        console.log('  [dry-run] would spawn above');
+      }
+    }
+
+    // Heartbeat at end of cycle — proves the loop is still alive
+    await healthcheckPing('');
+
+    // Sleep until next cycle, but check stop file mid-sleep at 1s granularity
+    for (let i = 0; i < opts.delaySec; i++) {
+      if (interrupted) break;
+      if (await checkStopFile()) break;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+
+  console.log('');
+  console.log(`Auto stopped: ${stopReason || 'unknown'}`);
+  console.log(
+    `  cycles=${cycleCount} started=${startedThisRun.length} (${startedThisRun.join(', ') || '—'})`,
+  );
+  notifyAuto(`🛑 auto stopped: ${stopReason}. cycles=${cycleCount}, started=${startedThisRun.length}`);
+  const cleanStops = ['all tasks done', 'no ready tasks and no WIP — nothing to progress', 'stop file present'];
+  if (autoTrace) {
+    autoTrace.update({
+      output: { stopReason, cycles: cycleCount, started: startedThisRun },
+      level: cleanStops.includes(stopReason) ? 'DEFAULT' : 'WARNING',
+    });
+    await lf?.flushAsync();
+    autoTrace = null;
+  }
+  await healthcheckPing(cleanStops.includes(stopReason) ? '' : '/fail');
 }
 
 // ---------------- Helpers ----------------
@@ -465,18 +856,30 @@ const [, , subcommand, ...rest] = process.argv;
     case 'attach':
       cmdAttach();
       break;
+    case 'auto':
+      await cmdAuto(rest);
+      break;
     default:
       console.log('WIND Accounting orchestrator');
       console.log('');
       console.log('Commands:');
       console.log('  ready                          List tasks whose deps are satisfied');
       console.log(
-        '  spawn <T-X.Y> ... [--dry-run]  Mark wip + launch in tmux pane(s); cap=MAX_PARALLEL',
+        '  spawn <T-X.Y> ... [--dry-run]  Mark wip + launch in zellij tab(s); cap=MAX_PARALLEL',
       );
-      console.log('  status                         Show wip/blocked + tmux panes');
+      console.log('  status                         Show wip/blocked + zellij tabs');
       console.log('  done <T-X.Y>                   Manually mark a task done');
       console.log('  schedule                       Regenerate specs/tasks/SCHEDULE.md');
-      console.log('  attach                         Print tmux attach hint');
+      console.log('  attach                         Print zellij attach hint');
+      console.log(
+        '  auto [flags]                   Continuous spawn loop. See docs/auto-orchestrator.md',
+      );
+      console.log(
+        '                                  Flags: --phase, --include, --exclude, --max-tasks,',
+      );
+      console.log(
+        '                                         --max-cycles, --delay, --stop-on-blocked, --dry-run',
+      );
       console.log('');
       console.log(`MAX_PARALLEL=${MAX_PARALLEL} (override via env)`);
       process.exit(subcommand ? 1 : 0);
