@@ -560,6 +560,7 @@ model AuditLog {
   entity_id   String
   before_json Json?
   after_json  Json?
+  reason      String?
   ip_address  String?
   user_agent  String?
   created_at  DateTime @default(now())

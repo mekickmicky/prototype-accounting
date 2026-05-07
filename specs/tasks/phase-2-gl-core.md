@@ -54,7 +54,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 ## Tasks
 
 ### T-2.1 — Error system (BusinessRuleError + envelope mapper)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/errors.ts`, `apps/api/src/middleware/error-handler.ts` (NEW)
 - **Reads:** specs/02 §10, specs/05 §Common Error Codes
@@ -68,7 +68,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Throwing `new BusinessRuleError('PERIOD_NOT_OPEN', { period_code: '2026-04' })` returns 409 with Thai message
 
 ### T-2.2 — AuditLog service
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/audit-log.ts` (NEW)
 - **Reads:** specs/02 §11
@@ -82,7 +82,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Posting a JE creates one AuditLog row with action=POST, before=null, after=full JE
 
 ### T-2.3 — DocumentNumberingService (atomic, FOR UPDATE)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/numbering.ts` (NEW)
 - **Reads:** specs/02 §3
@@ -98,7 +98,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Concurrent test (10 parallel `nextDocNo` calls in same tx scope but separate transactions) produces no duplicates; sequence is `JE-2026-0001` ... `JE-2026-0010`
 
 ### T-2.4 — Period helpers (deriveCode, ensureExists, getStatus)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/period.ts` (NEW — base)
 - **Reads:** specs/02 §2
@@ -112,7 +112,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Unit tests: `derivePeriodCode(new Date('2026-05-31T17:30:00Z')) === '2026-06'` (TZ shift); `assertOpen` throws on CLOSED period
 
 ### T-2.5 — Period close checklist
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/period.ts` (EDIT)
 - **Reads:** specs/02 §2.2
@@ -130,7 +130,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Unit test with seeded period containing 2 DRAFT JEs returns checklist with `no_draft_jes.status='fail', count=2`
 
 ### T-2.6 — Period close + closing entries
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/period.ts` (EDIT)
 - **Reads:** specs/02 §2.3, §12.3
@@ -150,7 +150,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Closing 2026-12 with seeded P&L data: 3 closing JEs auto-posted; period status=CLOSED; subsequent post into 2026-12 returns PERIOD_NOT_OPEN
 
 ### T-2.7 — Period reopen (admin only)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/period.ts` (EDIT)
 - **Reads:** specs/02 §2.4
@@ -166,7 +166,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Reopening 2026-12 voids the 3 closing JEs and sets period back to OPEN; AuditLog row exists with reason
 
 ### T-2.8 — Account service (CRUD + balance compute)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/account.ts` (NEW)
 - **Reads:** specs/01 §Account, specs/04 §2.2, specs/05 §Accounts
@@ -180,7 +180,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Listing returns CoA with computed `current_balance`; `assertPostable('11000')` (header) throws `ACCOUNT_NOT_POSTABLE`
 
 ### T-2.9 — JournalEntryService.createDraft + validate
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/journal-entry.ts` (NEW)
 - **Reads:** specs/02 §1, §13
@@ -195,7 +195,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Create draft with unbalanced lines throws `JE_NOT_BALANCED`; with header account throws `ACCOUNT_NOT_POSTABLE`; balanced 2-line draft persists
 
 ### T-2.10 — JournalEntryService.update (DRAFT only)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/journal-entry.ts` (EDIT)
 - **Reads:** specs/02 §5.1, §12.1
@@ -210,7 +210,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Updating posted JE returns 409; updating with stale `updated_at` returns 409 STALE_RECORD; valid update succeeds and logs
 
 ### T-2.11 — JournalEntryService.delete (DRAFT only)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/journal-entry.ts` (EDIT)
 - **Reads:** specs/02 §5.1
@@ -224,7 +224,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Delete posted JE returns 409; delete draft removes JE + lines + audit row exists
 
 ### T-2.12 — JournalEntryService.post
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/journal-entry.ts` (EDIT)
 - **Reads:** specs/02 §1, §2.1, §3
@@ -241,7 +241,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Post succeeds → status=POSTED, je_no assigned, audit row created; concurrent post of 5 JEs in same year produces sequential numbers
 
 ### T-2.13 — JournalEntryService.void (reversal)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/journal-entry.ts` (EDIT)
 - **Reads:** specs/02 §5.2, §5.4
@@ -259,7 +259,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Voiding a posted JE produces a second POSTED JE that exactly reverses it (TB unaffected); both linked bidirectionally; voiding twice returns ALREADY_VOIDED
 
 ### T-2.14 — `/api/v1/accounts` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/accounts.ts` (NEW)
 - **Reads:** specs/05 §GL: Accounts
@@ -274,7 +274,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Postman/curl tests for all 4 endpoints pass; non-admin POST returns 403
 
 ### T-2.15 — `/api/v1/periods` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/periods.ts` (NEW)
 - **Reads:** specs/05 §GL: Periods
@@ -288,7 +288,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Close on a period with draft JE returns 409 with `checklist` array; admin reopen succeeds; non-admin reopen returns 403
 
 ### T-2.16 — `/api/v1/journal-entries` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/journal-entries.ts` (NEW)
 - **Reads:** specs/05 §GL: Journal Entries
@@ -305,7 +305,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** All 7 endpoints round-trip; `q` searches description + je_no + source_ref; pagination meta correct
 
 ### T-2.17 — Zod validators (shared schemas package)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `packages/shared/src/schemas/gl.ts`, `packages/shared/src/schemas/common.ts` (NEW)
 - **Reads:** specs/05 (all GL request shapes)
@@ -318,7 +318,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Importable from web; invalid input rejected at API boundary with `VALIDATION_ERROR` 400
 
 ### T-2.18 — `/gl/accounts` page (CoA tree)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/gl/accounts/page.tsx`, `apps/web/src/components/gl/account-tree.tsx` (NEW)
 - **Reads:** specs/04 §2.2, wireframes/_styles.css for tree styling
@@ -333,7 +333,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Renders ~80–120 accounts in tree; collapse/expand persists in URL hash; admin can toggle active
 
 ### T-2.19 — `/gl/accounts/[code]` detail page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/gl/accounts/[code]/page.tsx` (NEW)
 - **Reads:** specs/04 §2.2, specs/08 §General Ledger detail (preview only — full version in Phase 7)
@@ -347,7 +347,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Picking 11020 (KBank current) shows posted receipt JEs; running balance ties out
 
 ### T-2.20 — `/gl/journal-entries` list page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/gl/journal-entries/page.tsx` (NEW)
 - **Reads:** specs/04 §2.3
@@ -361,7 +361,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** All filters compose; URL state persists filters; pagination works
 
 ### T-2.21 — `/gl/journal-entries/new` form page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/gl/journal-entries/new/page.tsx`, `apps/web/src/components/gl/je-form.tsx` (NEW)
 - **Reads:** specs/04 §2.4
@@ -378,7 +378,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Cannot post unbalanced JE; balanced 2-line JE posts and redirects to `/gl/journal-entries/{new-id}`
 
 ### T-2.22 — `/gl/journal-entries/[id]` view/edit page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/gl/journal-entries/[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §2.4, specs/02 §5.2
@@ -392,7 +392,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** State transitions reflected in UI; void from UI produces correct cross-links
 
 ### T-2.23 — `/gl/periods` page + close checklist modal
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/gl/periods/page.tsx`, `apps/web/src/components/gl/close-checklist-modal.tsx` (NEW)
 - **Reads:** specs/04 §2.5, specs/02 §2.2
@@ -407,7 +407,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Closing 2026-04 with 1 draft JE shows checklist with fail; clicking link navigates to draft list filtered to that period; closing succeeds after fix
 
 ### T-2.24 — Trial Balance query
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/reports/trial-balance.ts` (NEW)
 - **Reads:** specs/08 §Trial Balance
@@ -423,7 +423,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Unit test with seeded posted JEs returns balanced totals; voided JEs are excluded by `status=POSTED` (the reversal JE itself is POSTED so the net effect cancels)
 
 ### T-2.25 — `/api/v1/reports/trial-balance` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/reports.ts` (NEW)
 - **Reads:** specs/05 §Reports
@@ -437,7 +437,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** All 4 formats return 200; CSV opens in Excel without mojibake (UTF-8 BOM); PDF includes header, totals, page numbers
 
 ### T-2.26 — `/reports/trial-balance` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/reports/trial-balance/page.tsx` (NEW)
 - **Reads:** specs/06 §Report layouts, specs/08 §Trial Balance
@@ -453,7 +453,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** Visually matches wireframes/03-trial-balance.html; exports work; click drilldown navigates correctly
 
 ### T-2.27 — TB exports (CSV + XLSX + PDF templates)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/exports/csv.ts`, `xlsx.ts`, `apps/api/src/pdf/trial-balance.tsx` (NEW)
 - **Reads:** specs/08 §Export formats, specs/06 §Money formatting
@@ -466,7 +466,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** All three formats open cleanly; numbers tie out vs JSON response
 
 ### T-2.28 — GL UI primitives (AccountPicker, BranchPicker, PeriodPicker, DatePicker)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/ui/account-picker.tsx`, `branch-picker.tsx`, `period-picker.tsx`, `date-picker-th.tsx` (NEW)
 - **Reads:** specs/04 §Component Inventory, specs/06 §Date display (Buddhist Era)
@@ -480,7 +480,7 @@ UI layer (parallel after T-2.28): T-2.18, T-2.19, T-2.20, T-2.21, T-2.22, T-2.23
 - **Done when:** All four mount in `/dev/components` demo with sample data; AccountPicker filters as user types
 
 ### T-2.29 — GL Dashboard page (`/gl/dashboard`)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/gl/dashboard/page.tsx` (NEW)
 - **Reads:** specs/04 §2.1, wireframes/01-dashboard.html
