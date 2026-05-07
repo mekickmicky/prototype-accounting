@@ -125,7 +125,7 @@ T-1.1 (monorepo)
 - **Done when:** Unit test `D('1.005').times(D('1.005')).toFixed(2) === '1.01'` passes
 
 ### T-1.6 — Design tokens (CSS variables)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `apps/web/src/app/globals.css` (EDIT — extend Tailwind base)
 - **Reads:** specs/06 §Tokens (colors, spacing, typography), wireframes/_styles.css
