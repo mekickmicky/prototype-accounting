@@ -60,7 +60,7 @@ T-1.1 (monorepo)
 - **Done when:** `bun install` succeeds, `bun run dev` starts both apps, `curl localhost:3001` returns 200, `localhost:3000` shows Next default page
 
 ### T-1.2 — Tailwind v4 + shadcn/ui setup
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `apps/web/tailwind.config.ts`, `apps/web/src/app/globals.css`, `apps/web/components.json`, `apps/web/src/components/ui/*` (initial: button, input, dialog, dropdown-menu, table, badge, toast)
 - **Reads:** specs/06 §Components
