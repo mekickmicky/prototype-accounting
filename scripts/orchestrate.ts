@@ -583,13 +583,32 @@ function zellijAvailable(): boolean {
   return spawnSync('which', ['zellij']).status === 0;
 }
 
+// Live = the session exists AND is not in EXITED state. `--short` lies — it
+// lists EXITED sessions too, so a previous crash makes ensureSession() skip
+// recreating and every subsequent spawn fails with "no active session".
 function sessionExists(): boolean {
-  const r = spawnSync('zellij', ['list-sessions', '--short'], { encoding: 'utf-8' });
-  return r.status === 0 && r.stdout.split('\n').some((l) => l.trim() === SESSION);
+  const r = spawnSync('zellij', ['list-sessions'], { encoding: 'utf-8' });
+  if (r.status !== 0) return false;
+  // Strip ANSI before matching (zellij colorizes output).
+  const plain = r.stdout.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+  return plain.split('\n').some((line) => {
+    const m = line.match(/^\s*(\S+)\s+\[/);
+    if (!m || m[1] !== SESSION) return false;
+    return !line.includes('EXITED');
+  });
+}
+
+function deleteDeadSession(): void {
+  // Best-effort cleanup of an EXITED session of the same name so the new
+  // server can claim the name. Ignore errors — name collision after delete
+  // is rare and ensureSession's spawn will surface a real failure.
+  spawnSync('zellij', ['delete-session', SESSION], { stdio: 'ignore' });
 }
 
 function ensureSession(): void {
   if (sessionExists()) return;
+  // Reap any EXITED zombie of the same name first.
+  deleteDeadSession();
   // Zellij has no --detached flag; spawn without a TTY so the server starts headless.
   const child = spawn('zellij', ['--session', SESSION], { detached: true, stdio: 'ignore' });
   child.unref();
