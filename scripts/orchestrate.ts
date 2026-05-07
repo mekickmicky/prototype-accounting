@@ -26,6 +26,17 @@ const TEMPLATE_PATH = join(ROOT, 'scripts/task-prompt.template.md');
 const SESSION = 'wind-acc';
 const MAX_PARALLEL = parseInt(process.env.MAX_PARALLEL ?? '3', 10);
 
+// Safeguard #1 — Per-task budget caps.
+// --max-budget-usd is passed to each spawned claude worker. When hit, the
+// worker exits non-zero. Safeguard #2 dead-pane scan detects it and marks the
+// task Blocked. For DeepSeek the flag is passed but may no-op (different
+// provider billing); Safeguard #2 wall-clock timeout is the real backstop.
+const BUDGET_USD = {
+  Opus:     parseFloat(process.env.BUDGET_USD_OPUS     ?? '3.00'),
+  Sonnet:   parseFloat(process.env.BUDGET_USD_SONNET   ?? '1.00'),
+  DeepSeek: parseFloat(process.env.BUDGET_USD_DEEPSEEK ?? '0.50'),
+} as const;
+
 type Status = 'todo' | 'wip' | 'done' | 'blocked';
 type Model = 'Opus' | 'Sonnet' | 'DeepSeek';
 
@@ -54,6 +65,10 @@ interface Task {
   depends: string[];
   blocks: string;
   doneWhen: string;
+  /** Per-task budget override from spec field `Budget USD: N.NN`. */
+  budgetUsd?: number;
+  /** Per-task wall-clock timeout override from spec field `Timeout Min: N`. */
+  timeoutMin?: number;
 }
 
 // ---------------- Parser ----------------
@@ -94,6 +109,10 @@ async function parseAllTasks(): Promise<Task[]> {
       const depRaw = body.match(/^- \*\*Depends on:\*\* (.+)$/m)?.[1].trim() ?? '—';
       const blocks = body.match(/^- \*\*Blocks:\*\* (.+)$/m)?.[1].trim() ?? '';
       const doneWhen = body.match(/^- \*\*Done when:\*\* (.+)$/m)?.[1].trim() ?? '';
+      const budgetRaw = body.match(/^- \*\*Budget USD:\*\* ([\d.]+)/m)?.[1];
+      const budgetUsd = budgetRaw ? parseFloat(budgetRaw) : undefined;
+      const timeoutRaw = body.match(/^- \*\*Timeout Min:\*\* (\d+)/m)?.[1];
+      const timeoutMin = timeoutRaw ? parseInt(timeoutRaw, 10) : undefined;
 
       out.push({
         id,
@@ -107,6 +126,8 @@ async function parseAllTasks(): Promise<Task[]> {
         depends: parseDeps(depRaw),
         blocks,
         doneWhen,
+        budgetUsd,
+        timeoutMin,
       });
     }
   }
@@ -234,7 +255,7 @@ function listWindows(): string[] {
   return r.stdout.trim().split('\n').filter((n) => n.startsWith('T-'));
 }
 
-function providerFor(model: Model): { alias: string; flags: string } {
+function providerFor(model: Model, task: Task): { alias: string; flags: string } {
   // -p (print mode): worker runs the prompt to completion then exits. Without
   // this, claude stays in interactive mode after marking the task done — the
   // process lingers waiting for the next prompt, eating credits and creating
@@ -244,29 +265,37 @@ function providerFor(model: Model): { alias: string; flags: string } {
   // acceptEdits stalled workers on every bash command (verification curls,
   // dev-server starts, prisma migrate). Bypass keeps them productive — the
   // prompt template is the actual safety boundary.
+  //
+  // Safeguard #1: --max-budget-usd hard-caps each worker's API spend. For
+  // DeepSeek (different billing provider), the flag is passed but may no-op —
+  // Safeguard #2 wall-clock timeout is the backstop for DeepSeek workers.
+  const budget = task.budgetUsd ?? BUDGET_USD[model];
+  const budgetFlag = ` --max-budget-usd ${budget.toFixed(2)}`;
   if (model === 'DeepSeek') {
-    return { alias: 'ai-deepseek', flags: '-p --permission-mode bypassPermissions' };
+    return { alias: 'ai-deepseek', flags: `-p --permission-mode bypassPermissions${budgetFlag}` };
   }
   const cliModel = model === 'Opus' ? 'opus' : 'sonnet';
   return {
     alias: 'ai-anthropic',
-    flags: `-p --model ${cliModel} --permission-mode bypassPermissions`,
+    flags: `-p --model ${cliModel} --permission-mode bypassPermissions${budgetFlag}`,
   };
 }
 
 function buildLaunchCommand(task: Task): string {
   const today = new Date().toISOString().slice(0, 10);
   const eff = effectiveModel(task.model);
+  const provider = providerFor(eff, task);
+  const resolvedBudget = (task.budgetUsd ?? BUDGET_USD[eff]).toFixed(2);
   const template = readFileSync(TEMPLATE_PATH, 'utf-8');
   const prompt = template
     .replaceAll('{{ID}}', task.id)
     .replaceAll('{{PHASE_FILE}}', task.file)
     .replaceAll('{{MODEL}}', eff)
-    .replaceAll('{{TODAY}}', today);
+    .replaceAll('{{TODAY}}', today)
+    .replaceAll('{{BUDGET_USD}}', resolvedBudget);
 
   // Single-quote escape for shell
   const promptQuoted = `'${prompt.replace(/'/g, `'\\''`)}'`;
-  const provider = providerFor(eff);
   return `cd ${ROOT} && ${provider.alias} && claude ${provider.flags} ${promptQuoted}`;
 }
 

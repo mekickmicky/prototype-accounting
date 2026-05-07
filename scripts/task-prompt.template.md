@@ -92,5 +92,6 @@ PART B — VARIABLE: YOUR ASSIGNMENT
 - **Phase file:** {{PHASE_FILE}}
 - **Running on:** {{MODEL}}
 - **Today's date:** {{TODAY}}
+- **API budget:** ${{BUDGET_USD}} (the orchestrator will hard-stop this session at that figure — don't over-explore; if blocked, mark the task Blocked and exit rather than retrying indefinitely)
 
 Begin Part A workflow step 2 with the values above. Use {{ID}} as `<TASK_ID>` and {{TODAY}} as `<TODAY>` in the commands above.
