@@ -202,10 +202,19 @@ function spawnInPane(task: Task, dryRun: boolean): string {
     return cmd;
   }
   ensureSession();
-  spawnSync('tmux', ['new-window', '-t', SESSION, '-n', task.id, 'zsh', '-i']);
-  // give the interactive shell a moment to load aliases from ~/.zshrc
-  spawnSync('sleep', ['0.3']);
-  spawnSync('tmux', ['send-keys', '-t', `${SESSION}:${task.id}`, cmd, 'Enter']);
+  // Use -P -F to print the pane ID; window names with dots (e.g. "T-1.4") confuse
+  // tmux target parsing because ":" + dotted name is read as window:pane index.
+  // Targeting by stable %paneId avoids that ambiguity entirely.
+  const newWindow = spawnSync(
+    'tmux',
+    ['new-window', '-P', '-F', '#{pane_id}', '-t', SESSION, '-n', task.id, 'zsh', '-i'],
+    { encoding: 'utf-8' },
+  );
+  const paneId = newWindow.stdout?.trim();
+  if (!paneId) throw new Error(`Failed to create tmux window for ${task.id}`);
+  // Give the interactive shell a moment to load aliases from ~/.zshrc.
+  spawnSync('sleep', ['0.5']);
+  spawnSync('tmux', ['send-keys', '-t', paneId, cmd, 'Enter']);
   return cmd;
 }
 
