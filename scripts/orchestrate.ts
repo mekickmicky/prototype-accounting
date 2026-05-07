@@ -47,6 +47,85 @@ const WIP_TIMEOUT_MIN = {
 } as const;
 const WIP_STARTED_FILE = join(ROOT, '.orchestrator.wip-started.json');
 
+// Safeguard #3 — Pane output error scan.
+// Worker stdout+stderr is tee'd to per-task log files. Each cycle we tail
+// the last PANE_SCAN_TAIL_LINES lines and pattern-match for API/auth/billing
+// errors. Fatal matches kill the worker and mark it Blocked. Warn matches
+// increment a counter and escalate to fatal at 3 consecutive cycles.
+const LOG_DIR = process.env.WORKER_LOG_DIR ?? '/tmp/wind-acc-orchestrator';
+const PANE_SCAN_TAIL_LINES = 500;
+
+// Init log dir synchronously at startup so spawnInPane can always write.
+mkdirSync(LOG_DIR, { recursive: true });
+mkdirSync(join(LOG_DIR, 'archive'), { recursive: true });
+
+interface ErrorPattern {
+  name: string;
+  re: RegExp;
+  severity: 'fatal' | 'warn';
+  hint: string;
+}
+
+const ERROR_PATTERNS: ErrorPattern[] = [
+  // Auth / billing — fatal, user must intervene
+  {
+    name: 'deepseek_payment',
+    re: /(insufficient[_ ]?balance|payment[_ ]?required|402)/i,
+    severity: 'fatal',
+    hint: 'DeepSeek out of credit — top up at platform.deepseek.com',
+  },
+  {
+    name: 'auth_invalid',
+    re: /(invalid[_ ]api[_ ]key|unauthorized|401|authentication[_ ]failed)/i,
+    severity: 'fatal',
+    hint: 'API key rejected — check ~/.config or env',
+  },
+  {
+    name: 'rate_limit_persistent',
+    re: /(rate[_ ]?limit|429).+(retry|exceeded)/i,
+    severity: 'warn',
+    hint: 'Rate limited; if persists across multiple cycles, escalate',
+  },
+  {
+    name: 'quota_exhausted',
+    re: /(quota[_ ]exceeded|usage[_ ]?limit|insufficient[_ ]quota)/i,
+    severity: 'fatal',
+    hint: 'Provider quota — upgrade plan or wait for reset',
+  },
+  // Tool / runtime — usually fatal for the task
+  {
+    name: 'budget_killed',
+    re: /max[_ ]?budget[_ ]?(exceeded|reached)/i,
+    severity: 'fatal',
+    hint: 'Hit --max-budget-usd cap from Safeguard #1',
+  },
+  {
+    name: 'prisma_connect',
+    re: /can'?t reach database server|ECONNREFUSED.+5432/i,
+    severity: 'fatal',
+    hint: 'Postgres not running — docker compose up -d postgres',
+  },
+  {
+    name: 'oom',
+    re: /JavaScript heap out of memory|FATAL ERROR[\s\S]*allocation failed/i,
+    severity: 'fatal',
+    hint: 'Worker OOM — task too large; split or escalate model',
+  },
+  // Synthetic loop detection marker (injected by heuristic below)
+  {
+    name: 'output_loop',
+    re: /__loop_detected__/,
+    severity: 'fatal',
+    hint: 'Worker is repeating itself — check pane',
+  },
+];
+
+/** Pattern names that halt the entire auto loop when matched (not just the task). */
+const HALT_PATTERNS = new Set(['auth_invalid', 'quota_exhausted', 'deepseek_payment']);
+
+/** Per-task warn counters (in-memory, resets on Done/Reset). */
+const warnCounters = new Map<string, Map<string, number>>();
+
 type Status = 'todo' | 'wip' | 'done' | 'blocked';
 type Model = 'Opus' | 'Sonnet' | 'DeepSeek';
 
@@ -371,6 +450,133 @@ async function killAndBlock(task: Task, reason: string, dryRun = false): Promise
   });
 }
 
+// ---------------- Pane output scan (Safeguard #3) ----------------
+
+/** Strip ANSI escape sequences from a string. */
+function stripAnsi(s: string): string {
+  return s.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+}
+
+/** Simple djb2 hash used for loop-repetition detection. */
+function djb2(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  return h >>> 0;
+}
+
+interface ScanHit {
+  match: ErrorPattern;
+  snippet: string[];
+}
+
+/**
+ * Read the tail of the worker log and scan for error patterns.
+ * Also runs a loop-repetition heuristic (≥3 identical 20-line windows).
+ * Returns the first fatal hit, or warn hit if no fatal found, or null if clean.
+ */
+function scanPaneOutput(taskId: string): ScanHit | null {
+  const logPath = join(LOG_DIR, `${taskId}.log`);
+  let raw: string;
+  try {
+    raw = readFileSync(logPath, 'utf-8');
+  } catch {
+    return null; // log not yet written — task just started or no output yet
+  }
+
+  const allLines = raw.split('\n');
+  const tailLines = allLines.slice(-PANE_SCAN_TAIL_LINES);
+
+  // Loop-detection heuristic: take last 200 lines, slide 20-line windows,
+  // if ≥3 windows share the same hash inject a synthetic marker.
+  const loopLines = tailLines.slice(-200);
+  const windowHashes = new Map<number, number>();
+  const windowSize = 20;
+  for (let i = 0; i <= loopLines.length - windowSize; i++) {
+    const windowHash = djb2(loopLines.slice(i, i + windowSize).join('\n'));
+    windowHashes.set(windowHash, (windowHashes.get(windowHash) ?? 0) + 1);
+  }
+  const hasLoop = [...windowHashes.values()].some((count) => count >= 3);
+  const scanBuffer = tailLines.map(stripAnsi);
+  if (hasLoop) scanBuffer.push('__loop_detected__');
+
+  // Scan for patterns
+  let warnHit: ScanHit | null = null;
+  for (const pattern of ERROR_PATTERNS) {
+    for (let i = 0; i < scanBuffer.length; i++) {
+      if (pattern.re.test(scanBuffer[i] ?? '')) {
+        const snippet = scanBuffer
+          .slice(Math.max(0, i - 5), Math.min(scanBuffer.length, i + 3))
+          .map((l) => (l ?? '').slice(0, 200));
+        const hit: ScanHit = { match: pattern, snippet };
+        if (pattern.severity === 'fatal') return hit;
+        if (!warnHit) warnHit = hit; // keep first warn
+        break;
+      }
+    }
+  }
+  return warnHit;
+}
+
+/**
+ * Handle a warn-level pattern hit. Increments per-task counter;
+ * if the same pattern fires 3 consecutive cycles, promotes to fatal (killAndBlock).
+ * Returns true if escalated to fatal (caller should not re-check).
+ */
+async function warnPattern(task: Task, hit: ScanHit): Promise<boolean> {
+  const taskCounters = warnCounters.get(task.id) ?? new Map<string, number>();
+  warnCounters.set(task.id, taskCounters);
+  const prev = taskCounters.get(hit.match.name) ?? 0;
+  const next = prev + 1;
+  taskCounters.set(hit.match.name, next);
+
+  const snippetText = hit.snippet.join('\n');
+  console.log(`[pane-scan] ${task.id} WARN [${hit.match.name}] (${next}x): ${hit.match.hint}`);
+
+  if (next >= 3) {
+    // Escalate to fatal
+    console.log(`[pane-scan] ${task.id}: escalating ${hit.match.name} warn → fatal after ${next} cycles`);
+    notify('error', task.id, `pattern ${hit.match.name} escalated to fatal: ${hit.match.hint}`);
+    await killAndBlock(task, `${hit.match.name} (escalated from warn after ${next} cycles): ${hit.match.hint}`);
+    taskCounters.delete(hit.match.name);
+    return true;
+  }
+
+  notify('info', task.id, `pattern ${hit.match.name} warn (${next}/3): ${hit.match.hint}\n${snippetText.slice(0, 300)}`);
+  return false;
+}
+
+/** Rotate logs older than 24h to ${LOG_DIR}/archive/ (gzip with Bun shell). */
+async function rotateLogs(): Promise<void> {
+  try {
+    const archiveDir = join(LOG_DIR, 'archive');
+    await mkdir(archiveDir, { recursive: true });
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const files = await readdir(LOG_DIR);
+    for (const f of files) {
+      if (!f.endsWith('.log')) continue;
+      const fullPath = join(LOG_DIR, f);
+      try {
+        const stat = Bun.file(fullPath);
+        const mtime = (await stat.stat()).mtime;
+        if (mtime.getTime() < cutoff) {
+          const destBase = join(archiveDir, f);
+          // Move then gzip; if gzip not available, just move
+          spawnSync('sh', ['-c', `gzip -c "${fullPath}" > "${destBase}.gz" && rm "${fullPath}"`], { encoding: 'utf-8' });
+        }
+      } catch {
+        // skip — file may have been removed between readdir and stat
+      }
+    }
+  } catch {
+    // never fail the loop on a log rotation error
+  }
+}
+
+// Reset warn counters for a task when it transitions out of WIP.
+function clearWarnCounters(taskId: string): void {
+  warnCounters.delete(taskId);
+}
+
 // ---------------- Zellij ----------------
 
 function zellijAvailable(): boolean {
@@ -456,17 +662,22 @@ let autoTrace: ReturnType<Langfuse['trace']> | null = null;
 
 function spawnInPane(task: Task, dryRun: boolean): string {
   const cmd = buildLaunchCommand(task);
+  // Safeguard #3: tee worker output to per-task log for error scanning.
+  // tee's exit status masks the underlying exit (fine — we use log content, not exit code).
+  const logPath = join(LOG_DIR, `${task.id}.log`);
+  const wrappedCmd = `${cmd} 2>&1 | tee ${logPath}; exec zsh -i`;
   if (dryRun) {
     console.log(`# ${task.id} (${task.model}) — would run in zellij:${SESSION}:${task.id}`);
-    console.log(cmd);
+    console.log(`# log: ${logPath}`);
+    console.log(wrappedCmd);
     return cmd;
   }
   ensureSession();
   // Launch zsh -i so ~/.zshrc aliases (ai-anthropic etc.) are available.
-  // Append `; exec zsh -i` so the tab stays open as an interactive shell after claude exits.
+  // The wrappedCmd already ends with `; exec zsh -i` so the tab stays open.
   const result = spawnSync(
     'zellij',
-    ['--session', SESSION, 'action', 'new-tab', '--name', task.id, '--', 'zsh', '-i', '-c', `${cmd}; exec zsh -i`],
+    ['--session', SESSION, 'action', 'new-tab', '--name', task.id, '--', 'zsh', '-i', '-c', wrappedCmd],
     { encoding: 'utf-8' },
   );
   if (result.status !== 0) throw new Error(`Failed to create zellij tab for ${task.id}: ${result.stderr}`);
@@ -892,8 +1103,14 @@ async function cmdAuto(rest: string[]): Promise<void> {
     // Run before slot/batch computation so counts reflect any resets/kills.
     if (!opts.dryRun) {
       const health = await scanWipHealth(tasks);
-      for (const t of health.orphans) await resetToTodo(t);
-      for (const t of health.timeouts) await killAndBlock(t, 'wall-clock timeout');
+      for (const t of health.orphans) {
+        await resetToTodo(t);
+        clearWarnCounters(t.id);
+      }
+      for (const t of health.timeouts) {
+        await killAndBlock(t, 'wall-clock timeout');
+        clearWarnCounters(t.id);
+      }
       if (health.orphans.length > 0 || health.timeouts.length > 0) {
         // Re-parse so WIP count is accurate before slot calc
         tasks = await parseAllTasks();
@@ -901,16 +1118,56 @@ async function cmdAuto(rest: string[]): Promise<void> {
       }
     }
 
+    // Safeguard #3 — scan pane output for API/auth/billing/runtime errors.
+    // Runs after Safeguard #2 (which may have already handled some tasks).
+    if (!opts.dryRun) {
+      const wipNow = tasks.filter((t) => t.status === 'wip');
+      let needsReparse = false;
+      for (const t of wipNow) {
+        if (interrupted) break;
+        const hit = scanPaneOutput(t.id);
+        if (!hit) continue;
+        if (hit.match.severity === 'fatal') {
+          await killAndBlock(t, `${hit.match.name}: ${hit.match.hint}`);
+          clearWarnCounters(t.id);
+          needsReparse = true;
+          lf && autoTrace?.event({
+            name: 'task:error_pattern_matched',
+            metadata: { taskId: t.id, pattern: hit.match.name, hint: hit.match.hint, snippet: hit.snippet.join('\n').slice(0, 500) },
+          });
+          notify('error', t.id, `${hit.match.name}: ${hit.match.hint}\n${hit.snippet.join('\n').slice(0, 300)}`);
+          if (HALT_PATTERNS.has(hit.match.name)) {
+            stopReason = `API failure on ${t.id} (${hit.match.name}): ${hit.match.hint}`;
+            interrupted = true;
+            break;
+          }
+        } else {
+          const escalated = await warnPattern(t, hit);
+          if (escalated) {
+            needsReparse = true;
+            lf && autoTrace?.event({
+              name: 'task:error_pattern_matched',
+              metadata: { taskId: t.id, pattern: hit.match.name, hint: hit.match.hint, escalated: true },
+            });
+          }
+        }
+      }
+      if (needsReparse) {
+        tasks = await parseAllTasks();
+        counts = countByStatus(tasks);
+      }
+    }
+
     // Track transitions for telemetry / done counter.
-    // Also clear WIP-started entries when a worker writes Done or Blocked itself.
+    // Also clear WIP-started entries + warn counters when a worker writes Done or Blocked itself.
     for (const t of tasks) {
       if (t.status === 'done' && !seenDone.has(t.id)) {
         seenDone.add(t.id);
-        if (!opts.dryRun) await clearWipStart(t.id);
+        if (!opts.dryRun) { await clearWipStart(t.id); clearWarnCounters(t.id); }
       }
       if (t.status === 'blocked' && !seenBlocked.has(t.id)) {
         seenBlocked.add(t.id);
-        if (!opts.dryRun) await clearWipStart(t.id);
+        if (!opts.dryRun) { await clearWipStart(t.id); clearWarnCounters(t.id); }
       }
       if (t.status === 'wip' && !seenWip.has(t.id)) seenWip.add(t.id);
     }
@@ -980,6 +1237,9 @@ async function cmdAuto(rest: string[]): Promise<void> {
 
     // Heartbeat at end of cycle — proves the loop is still alive
     await healthcheckPing('');
+
+    // Safeguard #3: Rotate old logs to archive (fire-and-forget, non-blocking)
+    rotateLogs().catch(() => undefined);
 
     // Sleep until next cycle, but check stop file mid-sleep at 1s granularity
     for (let i = 0; i < opts.delaySec; i++) {
