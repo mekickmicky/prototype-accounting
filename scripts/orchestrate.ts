@@ -664,8 +664,13 @@ function spawnInPane(task: Task, dryRun: boolean): string {
   const cmd = buildLaunchCommand(task);
   // Safeguard #3: tee worker output to per-task log for error scanning.
   // tee's exit status masks the underlying exit (fine — we use log content, not exit code).
+  // Worker exits → tab auto-closes. NO trailing `exec zsh -i` (FD-leaked: every
+  // completed task held a zombie shell + PTY, hit EMFILE around tab #30 on macOS).
+  // Safeguard #2 picks up "pane gone for WIP task" as orphan (resets to Todo);
+  // Done tasks just disappear cleanly. Pane scrollback is gone but `tee` already
+  // captured everything to logs.
   const logPath = join(LOG_DIR, `${task.id}.log`);
-  const wrappedCmd = `${cmd} 2>&1 | tee ${logPath}; exec zsh -i`;
+  const wrappedCmd = `${cmd} 2>&1 | tee ${logPath}`;
   if (dryRun) {
     console.log(`# ${task.id} (${task.model}) — would run in zellij:${SESSION}:${task.id}`);
     console.log(`# log: ${logPath}`);
@@ -674,7 +679,6 @@ function spawnInPane(task: Task, dryRun: boolean): string {
   }
   ensureSession();
   // Launch zsh -i so ~/.zshrc aliases (ai-anthropic etc.) are available.
-  // The wrappedCmd already ends with `; exec zsh -i` so the tab stays open.
   const result = spawnSync(
     'zellij',
     ['--session', SESSION, 'action', 'new-tab', '--name', task.id, '--', 'zsh', '-i', '-c', wrappedCmd],
