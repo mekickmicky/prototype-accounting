@@ -109,9 +109,9 @@ T-1.1 (monorepo)
 - **Done when:** Migration applies cleanly; manual INSERT of unbalanced JE fails with constraint violation
 
 ### T-1.5 — Decimal.js config + money helpers
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
-- **Files:** `packages/shared/src/money.ts`, `packages/shared/package.json` (NEW)
+- **Files:** `packages/shared/src/money.ts`, `packages/shared/src/money.test.ts`, `packages/shared/package.json`, `packages/shared/tsconfig.json` (NEW)
 - **Reads:** CLAUDE.md §Money Handling, specs/02 §13
 - **Spec:**
   - `Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP })` once
