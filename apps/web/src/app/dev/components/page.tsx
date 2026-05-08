@@ -21,6 +21,8 @@ import { AccountPicker, type AccountOption } from "@/components/ui/account-picke
 import { BranchPicker } from "@/components/ui/branch-picker";
 import { PeriodPicker, type PeriodOption } from "@/components/ui/period-picker";
 import { DatePickerTH } from "@/components/ui/date-picker-th";
+import { CustomerPicker, type CustomerOption } from "@/components/ui/customer-picker";
+import { ServicePicker, type CatalogService } from "@/components/ui/service-picker";
 
 // ─── Sample data for T-2.28 pickers ───────────────────────────────
 
@@ -169,6 +171,10 @@ export default function ComponentsDemo() {
   const [pickedBranch, setPickedBranch] = useState("TL");
   const [pickedPeriod, setPickedPeriod] = useState<string | null>(null);
   const [pickedDate, setPickedDate] = useState<string | null>("2026-05-08");
+  const [pickedCustomerId, setPickedCustomerId] = useState<string | null>(null);
+  const [pickedCustomer, setPickedCustomer] = useState<CustomerOption | null>(null);
+  const [pickedServiceCode, setPickedServiceCode] = useState<string | null>(null);
+  const [pickedService, setPickedService] = useState<CatalogService | null>(null);
 
   const filteredRows = SAMPLE_ROWS.filter((r) => {
     const matchSearch =
@@ -417,6 +423,67 @@ export default function ComponentsDemo() {
           </p>
           <p className="text-[11px] text-[--text-dim]">
             Stores Gregorian ISO, displays Buddhist Era (พ.ศ.) below.
+          </p>
+        </div>
+      </Section>
+
+      {/* ── T-3.15: CustomerPicker ── */}
+      <Section title="CustomerPicker (T-3.15)">
+        <div className="max-w-xs space-y-2">
+          <CustomerPicker
+            value={pickedCustomerId}
+            onChange={(id, c) => {
+              setPickedCustomerId(id);
+              setPickedCustomer(c);
+            }}
+            placeholder="เลือกลูกค้า..."
+          />
+          <p className="text-[12px] text-[--text-muted]">
+            Selected ID:{" "}
+            <span className="tabular-nums text-[--text-primary]">
+              {pickedCustomerId ?? "—"}
+            </span>
+          </p>
+          {pickedCustomer && (
+            <p className="text-[11px] text-[--text-dim]">
+              {pickedCustomer.code} · {pickedCustomer.name_th ?? pickedCustomer.name}
+              {pickedCustomer.phone ? ` · ${pickedCustomer.phone}` : ""}
+            </p>
+          )}
+          <p className="text-[11px] text-[--text-dim]">
+            Searches /api/v1/customers?q= with debounce. "Quick add" opens inline
+            modal, posts /api/v1/customers, then auto-selects.
+          </p>
+        </div>
+      </Section>
+
+      {/* ── T-3.15: ServicePicker ── */}
+      <Section title="ServicePicker (T-3.15)">
+        <div className="max-w-sm space-y-2">
+          <ServicePicker
+            value={pickedServiceCode}
+            onChange={(code, s) => {
+              setPickedServiceCode(code);
+              setPickedService(s);
+            }}
+            placeholder="เลือกบริการ..."
+          />
+          <p className="text-[12px] text-[--text-muted]">
+            Selected:{" "}
+            <span className="tabular-nums text-[--text-primary]">
+              {pickedServiceCode ?? "—"}
+            </span>
+          </p>
+          {pickedService && (
+            <div className="space-y-0.5 text-[11px] text-[--text-dim]">
+              <p>Unit price: {pickedService.default_unit_price}</p>
+              <p>Revenue account: {pickedService.default_revenue_account_code}</p>
+              <p>VAT rate: {pickedService.default_vat_rate}%</p>
+            </div>
+          )}
+          <p className="text-[11px] text-[--text-dim]">
+            Searches static catalog from @wind-acc/shared. Returns full
+            CatalogService for invoice line autofill.
           </p>
         </div>
       </Section>

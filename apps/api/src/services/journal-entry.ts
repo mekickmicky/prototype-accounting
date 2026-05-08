@@ -468,12 +468,12 @@ export async function post(
  *
  * Named `voidEntry` because `void` is a TypeScript reserved word.
  */
-export async function voidEntry(
+export async function voidEntryInTx(
+  tx: Tx,
   je_id: string,
   actor_id: string,
   reason: string,
 ): Promise<{ original: JournalEntryWithLines; reversal: JournalEntryWithLines }> {
-  return prisma.$transaction(async tx => {
     const original = await tx.journalEntry.findUnique({
       where: { id: je_id },
       include: { lines: { orderBy: { line_no: 'asc' } } },
@@ -554,5 +554,16 @@ export async function voidEntry(
     });
 
     return { original: voided, reversal };
-  });
+}
+
+/**
+ * Void a POSTED JournalEntry, opening its own `prisma.$transaction`.
+ * Thin wrapper around `voidEntryInTx` for callers that don't already own a tx.
+ */
+export async function voidEntry(
+  je_id: string,
+  actor_id: string,
+  reason: string,
+): Promise<{ original: JournalEntryWithLines; reversal: JournalEntryWithLines }> {
+  return prisma.$transaction(tx => voidEntryInTx(tx, je_id, actor_id, reason));
 }

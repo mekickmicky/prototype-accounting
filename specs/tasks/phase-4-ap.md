@@ -52,7 +52,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 ## Tasks
 
 ### T-4.1 — VendorService CRUD (with vendor_type)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/vendor.ts` (NEW)
 - **Reads:** specs/01 §Vendor, specs/03 §5.2 (vendor_type INDIVIDUAL|JURISTIC)
@@ -66,7 +66,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Create vendor with vendor_type required; default_withholding_rates persisted; delete with bill returns 409
 
 ### T-4.2 — `/api/v1/vendors` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/vendors.ts` (NEW)
 - **Reads:** specs/05 §AP: Vendors
@@ -78,7 +78,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** All 5 endpoints round-trip; `?vendor_type=INDIVIDUAL` filters correctly
 
 ### T-4.3 — WHT rate table (lookup)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `packages/shared/src/wht-rates.ts` (NEW)
 - **Reads:** specs/03 §5.2
@@ -91,7 +91,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Importable; threshold applied as boolean check in T-4.4
 
 ### T-4.4 — Bill math (line totals + WHT calc on PRE-VAT)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `packages/shared/src/bill-math.ts` (NEW)
 - **Reads:** specs/02 §13.4, specs/03 §5.2 (threshold), §5.3
@@ -105,7 +105,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Property test: `subtotal + vat_total - withholding_total === total - withholding_total = net_payable`; bill of 500 THB → withholding_total=0 even with rate=3%
 
 ### T-4.5 — BillService.createDraft + validate
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/bill.ts` (NEW)
 - **Reads:** specs/05 §POST /bills, specs/02 §4.5
@@ -119,7 +119,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Draft persists with computed totals; missing vendor_invoice_no produces warning (not error)
 
 ### T-4.6 — BillService.update (DRAFT only)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/bill.ts` (EDIT)
 - **Reads:** specs/02 §5.1
@@ -129,7 +129,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Update posted bill returns 409; valid update succeeds
 
 ### T-4.7 — BillService.post (with VatRegister INPUT)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/bill.ts` (EDIT)
 - **Reads:** specs/02 §4.5, specs/03 §3
@@ -149,7 +149,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Posting bill 1000 net + 70 VAT + 30 WHT (3% on services) creates JE: Dr Expense 1000 + Dr VAT-Recv 70, Cr AP 1040, Cr WHT-Payable 30; VatRegister INPUT row inserted
 
 ### T-4.8 — BillService.void
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/bill.ts` (EDIT)
 - **Reads:** specs/02 §5.3
@@ -162,7 +162,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Void of paid bill returns 409; void of unpaid bill produces reversal JE + reversal VatRegister
 
 ### T-4.9 — `/api/v1/bills` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/bills.ts` (NEW)
 - **Reads:** specs/05 §AP (Bills mirror Sales Invoices)
@@ -172,7 +172,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** All 7 endpoints round-trip
 
 ### T-4.10 — PaymentService.createDraft + apply logic
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/payment.ts`, `apps/api/src/services/payment-application.ts` (NEW)
 - **Reads:** specs/05 §POST /payments, specs/02 §4.6
@@ -185,7 +185,8 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Draft validates over-application (PAYMENT_OVERAPPLIED); apply 500 to bill of 1000 → PARTIAL_PAID
 
 ### T-4.11 — PaymentService.post (with WithholdingRecord auto-create)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Timeout Min:** 150
 - **Model:** Opus
 - **Files:** `apps/api/src/services/payment.ts` (EDIT)
 - **Reads:** specs/02 §4.6, specs/03 §5.3, §5.4
@@ -206,7 +207,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Payment of 1040 (net of WHT) clears bill's AP 1040; WithholdingRecord row created with cert_no `WHT-2026-NNNN`, links payment+bill+vendor
 
 ### T-4.12 — PaymentService.void (cascade)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/payment.ts` (EDIT)
 - **Reads:** specs/02 §5.3
@@ -219,7 +220,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Voiding payment that paid bill → bill back to POSTED, WHT cert marked VOID, reversal JE created
 
 ### T-4.13 — `/ap/vendors` UI (list/new/detail)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ap/vendors/page.tsx`, `new/page.tsx`, `[id]/page.tsx`, `apps/web/src/components/ui/vendor-picker.tsx` (NEW)
 - **Reads:** specs/04 §4
@@ -233,7 +234,8 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** CRUD round-trips; vendor_type drives badge
 
 ### T-4.14 — `/ap/bills` UI (list/new/detail) + Bill PDF
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Budget USD:** 2.50
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ap/bills/page.tsx`, `new/page.tsx`, `[id]/page.tsx`, `apps/web/src/components/ap/bill-form.tsx`, `apps/api/src/pdf/bill.tsx` (NEW)
 - **Reads:** specs/04 §4.1
@@ -248,7 +250,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Form computes withholding live; threshold warning if total < 1000 ("ยอดต่ำกว่า 1,000 บาท ไม่ต้องหักภาษี")
 
 ### T-4.15 — `/api/v1/payments` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/payments.ts` (NEW)
 - **Reads:** specs/05 §AP (Payments mirror Receipts)
@@ -258,7 +260,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Round-trip; `/payments/:id/wht-certs` lists associated certs
 
 ### T-4.16 — AP Zod schemas
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** DeepSeek
 - **Files:** `packages/shared/src/schemas/ap.ts` (NEW)
 - **Reads:** specs/05 §AP
@@ -268,7 +270,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Importable, validation works at API boundary
 
 ### T-4.17 — `/ap/payments` UI (list/new/detail)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ap/payments/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §4.2
@@ -281,7 +283,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Two entry points work (standalone + from bill detail); detail shows linked WHT certs
 
 ### T-4.18 — `/ap/dashboard` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ap/dashboard/page.tsx` (NEW)
 - **Reads:** specs/04 §4
@@ -291,7 +293,8 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** Numbers tie out; overdue count matches aging report
 
 ### T-4.19 — WHT certificate (50 ทวิ) PDF
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Budget USD:** 2.00
 - **Model:** Sonnet
 - **Files:** `apps/api/src/pdf/wht-cert.tsx`, route in `payments.ts` (`GET /payments/:id/wht-certs/:cert_id/pdf` and `GET /tax-filings/wht-certs/:id/pdf`) (NEW)
 - **Reads:** specs/03 §5.4
@@ -308,7 +311,7 @@ T-3.4 (Invoice math) ─┬──┼─ T-4.4 (Bill math) ─ T-4.5/.6/.7/.8 (Bi
 - **Done when:** PDF renders with correct cumulative; manual visual diff vs sample 50 ทวิ form (provide via wireframe later)
 
 ### T-4.20 — AP Aging report
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/reports/ap-aging.ts`, route in `reports.ts` (EDIT), `apps/web/src/app/(authenticated)/reports/ap-aging/page.tsx`, `apps/api/src/pdf/ap-aging.tsx` (NEW)
 - **Reads:** specs/04 §4, specs/08 §AP Aging

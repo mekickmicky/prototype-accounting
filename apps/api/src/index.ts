@@ -4,6 +4,13 @@ import { accountRoutes } from "./routes/accounts";
 import { journalEntryRoutes } from "./routes/journal-entries";
 import { periodRoutes } from "./routes/periods";
 import { reportRoutes } from "./routes/reports";
+import { customerRoutes } from "./routes/customers";
+import { salesInvoiceRoutes } from "./routes/sales-invoices";
+import { receiptRoutes } from "./routes/receipts";
+import { bankAccountRoutes } from "./routes/bank-accounts";
+import { vendorRoutes } from "./routes/vendors";
+import { billRoutes } from "./routes/bills";
+import { paymentRoutes, taxFilingRoutes } from "./routes/payments";
 import { errorHandler } from "./middleware/error-handler";
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -18,7 +25,15 @@ const app = new Elysia()
       .use(accountRoutes)
       .use(journalEntryRoutes)
       .use(periodRoutes)
-      .use(reportRoutes),
+      .use(reportRoutes)
+      .use(customerRoutes)
+      .use(salesInvoiceRoutes)
+      .use(receiptRoutes)
+      .use(bankAccountRoutes)
+      .use(vendorRoutes)
+      .use(billRoutes)
+      .use(paymentRoutes)
+      .use(taxFilingRoutes),
   )
   .listen(PORT);
 

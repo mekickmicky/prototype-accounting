@@ -102,6 +102,11 @@ enum UserRole {
   VIEWER
 }
 
+enum VendorType {
+  INDIVIDUAL
+  JURISTIC
+}
+
 // ═════════════════════ MASTERS ═════════════════════
 
 model Account {
@@ -161,26 +166,28 @@ model Customer {
 }
 
 model Vendor {
-  id                      String    @id @default(cuid())
-  code                    String    @unique
-  name                    String
-  name_th                 String?
-  tax_id                  String?
-  branch_office           String    @default("00000")
-  address                 String?
-  phone                   String?
-  email                   String?
-  payment_terms_days      Int       @default(30)
-  default_ap_account_code String    @default("21010")
-  withholding_rates       Json?
-  is_active               Boolean   @default(true)
-  deleted_at              DateTime?
-  created_at              DateTime  @default(now())
-  updated_at              DateTime  @updatedAt
-  bills                   Bill[]
-  payments                Payment[]
+  id                        String     @id @default(cuid())
+  code                      String     @unique
+  name                      String
+  name_th                   String?
+  vendor_type               VendorType
+  tax_id                    String?
+  branch_office             String     @default("00000")
+  address                   String?
+  phone                     String?
+  email                     String?
+  payment_terms_days        Int        @default(30)
+  default_ap_account_code   String     @default("21010")
+  default_withholding_rates Json?
+  is_active                 Boolean    @default(true)
+  deleted_at                DateTime?
+  created_at                DateTime   @default(now())
+  updated_at                DateTime   @updatedAt
+  bills                     Bill[]
+  payments                  Payment[]
 
   @@index([is_active, deleted_at])
+  @@index([vendor_type])
   @@map("vendors")
 }
 
@@ -288,6 +295,8 @@ model SalesInvoice {
   branch_code          String
   issue_date           DateTime             @db.Date
   due_date             DateTime             @db.Date
+  is_tax_invoice       Boolean              @default(false)
+  vat_inclusive        Boolean              @default(true)
   subtotal             Decimal              @default(0) @db.Decimal(15, 2)
   discount             Decimal              @default(0) @db.Decimal(15, 2)
   vat_amount           Decimal              @default(0) @db.Decimal(15, 2)
@@ -296,6 +305,11 @@ model SalesInvoice {
   paid_amount          Decimal              @default(0) @db.Decimal(15, 2)
   status               DocStatus            @default(DRAFT)
   je_id                String?              @unique
+  posted_at            DateTime?
+  posted_by_id         String?
+  voided_at            DateTime?
+  voided_by_id         String?
+  void_reason          String?
   notes                String?
   source_type          String?
   source_ref           String?
@@ -344,6 +358,9 @@ model Receipt {
   slip_ref        String?
   status          DocStatus            @default(DRAFT)
   je_id           String?              @unique
+  voided_at       DateTime?
+  voided_by_id    String?
+  void_reason     String?
   notes           String?
   created_at      DateTime             @default(now())
   updated_at      DateTime             @updatedAt
@@ -384,13 +401,20 @@ model Bill {
   withholding_amount   Decimal              @default(0) @db.Decimal(15, 2)
   total                Decimal              @default(0) @db.Decimal(15, 2)
   paid_amount          Decimal              @default(0) @db.Decimal(15, 2)
+  vat_inclusive        Boolean              @default(true)
   status               DocStatus            @default(DRAFT)
   je_id                String?              @unique
+  posted_at            DateTime?
+  posted_by_id         String?
+  voided_at            DateTime?
+  voided_by_id         String?
+  void_reason          String?
   notes                String?
   created_at           DateTime             @default(now())
   updated_at           DateTime             @updatedAt
   lines                BillLine[]
   payment_applications PaymentApplication[]
+  withholding_records  WithholdingRecord[]
 
   @@index([vendor_id])
   @@index([status, due_date])
@@ -431,6 +455,9 @@ model Payment {
   cheque_no         String?
   status            DocStatus            @default(DRAFT)
   je_id             String?              @unique
+  voided_at         DateTime?
+  voided_by_id      String?
+  void_reason       String?
   notes             String?
   created_at        DateTime             @default(now())
   updated_at        DateTime             @updatedAt
@@ -516,8 +543,12 @@ model VatRegister {
   vat_rate            Decimal    @default(7) @db.Decimal(5, 2)
   source_type         String
   source_id           String
+  claimable           Boolean    @default(true)
   filing_id           String?
   filing              TaxFiling? @relation(fields: [filing_id], references: [id])
+  reversal_of_id      String?       @unique
+  reversal_of         VatRegister?  @relation("VatRegisterReversal", fields: [reversal_of_id], references: [id])
+  reversed_by         VatRegister?  @relation("VatRegisterReversal")
   created_at          DateTime   @default(now())
 
   @@index([period_code, vat_type])
@@ -529,6 +560,8 @@ model WithholdingRecord {
   id            String     @id @default(cuid())
   payment_id    String
   payment       Payment    @relation(fields: [payment_id], references: [id])
+  bill_id       String?
+  bill          Bill?      @relation(fields: [bill_id], references: [id])
   vendor_id     String
   vendor_tax_id String?
   wht_type      String
@@ -541,10 +574,13 @@ model WithholdingRecord {
   cert_pdf_url  String?
   filing_id     String?
   filing        TaxFiling? @relation(fields: [filing_id], references: [id])
+  status        String     @default("ACTIVE")
+  voided_at     DateTime?
   created_at    DateTime   @default(now())
 
   @@index([period_code])
   @@index([vendor_id])
+  @@index([bill_id])
   @@map("withholding_records")
 }
 
