@@ -230,9 +230,34 @@ function parseDeps(raw: string): string[] {
 
 // Extract file paths from a task's Files: field. Files are wrapped in
 // backticks; annotations like (NEW) / (EDIT) are stripped.
+//
+// Specs commonly use a shorthand for sibling files in the same directory,
+// e.g. `apps/web/src/app/.../foo/page.tsx`, `new/page.tsx`, `[id]/page.tsx`.
+// Without resolution, two tasks that both end with `new/page.tsx` would
+// false-positive as conflicting even when their full paths differ. Resolve
+// any path that doesn't start with a known top-level dir against the
+// directory of the most recent fully-qualified path in the same list.
+const TOP_DIRS = ['apps/', 'packages/', 'scripts/', 'docs/', 'specs/', 'wireframes/'];
+function isFullPath(p: string): boolean {
+  return TOP_DIRS.some((d) => p.startsWith(d));
+}
 function extractFiles(filesField: string): string[] {
   if (!filesField) return [];
-  return [...filesField.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim());
+  const raw = [...filesField.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim());
+  const resolved: string[] = [];
+  let lastDir = '';
+  for (const p of raw) {
+    if (isFullPath(p)) {
+      resolved.push(p);
+      const idx = p.lastIndexOf('/');
+      lastDir = idx >= 0 ? p.slice(0, idx) : '';
+    } else if (lastDir) {
+      resolved.push(`${lastDir}/${p}`);
+    } else {
+      resolved.push(p);
+    }
+  }
+  return resolved;
 }
 
 // Two tasks "conflict" if they list the same backticked path. This is the
