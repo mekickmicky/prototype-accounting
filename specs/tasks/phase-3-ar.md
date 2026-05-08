@@ -52,7 +52,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 ## Tasks
 
 ### T-3.1 — CustomerService CRUD
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/customer.ts` (NEW)
 - **Reads:** specs/01 §Customer, specs/04 §3.2
@@ -67,7 +67,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Create customer auto-generates `CUST-2026-0001`; delete with open invoice returns 409
 
 ### T-3.2 — `/api/v1/customers` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/customers.ts` (NEW)
 - **Reads:** specs/05 §AR: Customers
@@ -82,7 +82,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** All 5 endpoints round-trip; pagination meta correct; q searches code + name + name_th + phone
 
 ### T-3.3 — Service catalog (static JSON)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `packages/shared/src/catalog/services.ts` (NEW)
 - **Reads:** specs/04 §3.3, specs/10 §Service catalog
@@ -95,7 +95,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** ≥10 services exported, each with valid revenue account code that exists in CoA
 
 ### T-3.4 — Invoice math helpers (subtotal, VAT, withholding)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `packages/shared/src/invoice-math.ts` (NEW)
 - **Reads:** specs/02 §13 (money math), specs/03 §1–3
@@ -110,7 +110,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Property test: for any line `(qty, price, discount, vat_rate, vat_inclusive)`, `net + vat === gross` and totals reconcile across lines
 
 ### T-3.5 — SalesInvoiceService.createDraft + validate
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/sales-invoice.ts` (NEW)
 - **Reads:** specs/05 §POST /sales-invoices, specs/02 §4.1, specs/03 §1.3
@@ -125,7 +125,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Draft with `is_tax_invoice=true` but customer missing tax_id returns INVALID_TAX_INVOICE; valid draft persists with computed totals
 
 ### T-3.6 — SalesInvoiceService.update (DRAFT only)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/sales-invoice.ts` (EDIT)
 - **Reads:** specs/02 §5.1, §12.1
@@ -139,7 +139,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Update posted invoice returns 409; valid update succeeds
 
 ### T-3.7 — SalesInvoiceService.post (with VatRegister)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/sales-invoice.ts` (EDIT)
 - **Reads:** specs/02 §4.1, specs/03 §2
@@ -161,7 +161,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Posting INV with 1 line @ 1000 net + 7% VAT creates JE: Dr AR 1070, Cr Revenue 1000, Cr VAT 70; VatRegister row inserted; tax invoice flag generates separate tax_invoice_no
 
 ### T-3.8 — SalesInvoiceService.void
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/sales-invoice.ts` (EDIT)
 - **Reads:** specs/02 §4.2, §5.3
@@ -175,7 +175,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Void of paid invoice returns 409; void of unpaid invoice produces reversal JE + reversal VatRegister row; subsequent PP30 preview excludes both rows (net zero)
 
 ### T-3.9 — `/api/v1/sales-invoices` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/sales-invoices.ts` (NEW)
 - **Reads:** specs/05 §AR: Sales Invoices
@@ -192,7 +192,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** All 7 endpoints round-trip; `?overdue=true` filters by `due_date < today AND paid_amount < total`
 
 ### T-3.10 — ReceiptService.createDraft + validate
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/receipt.ts` (NEW)
 - **Reads:** specs/05 §POST /receipts, specs/02 §4.3–4.4
@@ -205,7 +205,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Receipt with applied > total returns RECEIPT_OVERAPPLIED; valid draft persists
 
 ### T-3.11 — ReceiptApplication logic (paid_amount + status)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/receipt-application.ts` (NEW)
 - **Reads:** specs/02 §4.3
@@ -220,7 +220,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Apply 500 to invoice with total 1000 → PARTIAL_PAID; apply another 500 → PAID; unapply both → POSTED
 
 ### T-3.12 — ReceiptService.post (with advance payment)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/receipt.ts` (EDIT)
 - **Reads:** specs/02 §4.3 (applied), §4.4 (advance)
@@ -245,7 +245,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Receipt 1000 applied to invoice 1000 → invoice PAID, JE: Dr Bank 1000 / Cr AR 1000; advance receipt 500 with no applications → JE: Dr Bank 500 / Cr Customer Deposits 500
 
 ### T-3.13 — ReceiptService.void (cascade unapply)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/receipt.ts` (EDIT)
 - **Reads:** specs/02 §5.3
@@ -259,7 +259,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Voiding a receipt that fully paid an invoice → invoice back to POSTED; reversal JE created
 
 ### T-3.14 — `/api/v1/receipts` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/receipts.ts` (NEW)
 - **Reads:** specs/05 §AR: Receipts
@@ -276,7 +276,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** All endpoints round-trip; receipt PDF includes invoice references
 
 ### T-3.15 — `<CustomerPicker>` + `<ServicePicker>`
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/ui/customer-picker.tsx`, `service-picker.tsx` (NEW)
 - **Reads:** specs/04 §3.2, §3.3
@@ -288,7 +288,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Both render in `/dev/components`; quick-add round-trips back into picker
 
 ### T-3.16 — `/ar/customers` list/new/detail
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ar/customers/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §3.1, §3.2
@@ -301,7 +301,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** CRUD flow round-trips; detail page shows correct AR balance
 
 ### T-3.17 — `/ar/invoices` list page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ar/invoices/page.tsx` (NEW)
 - **Reads:** specs/04 §3.1
@@ -314,7 +314,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Filters compose; overdue toggle filters correctly; pagination works
 
 ### T-3.18 — `/ar/invoices/new` + edit form
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ar/invoices/new/page.tsx`, `apps/web/src/components/ar/invoice-form.tsx` (NEW)
 - **Reads:** specs/04 §3.3, wireframes/04-sales-invoice.html
@@ -329,7 +329,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Visually matches wireframe; live totals match backend; post returns invoice with je_no
 
 ### T-3.19 — `/ar/invoices/[id]` detail
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ar/invoices/[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §3.1
@@ -345,7 +345,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** State-specific UI correct; Record Payment opens prefilled receipt form
 
 ### T-3.20 — Invoice PDF templates (regular + tax invoice)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/pdf/sales-invoice.tsx`, `apps/api/src/pdf/tax-invoice.tsx` (NEW)
 - **Reads:** specs/03 §1.3 (tax invoice required fields)
@@ -359,7 +359,8 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Both PDFs render with correct data; tax invoice missing tax_id throws INVALID_TAX_INVOICE before render
 
 ### T-3.21 — `/ar/receipts` list/new/detail
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Budget USD:** 2.50
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ar/receipts/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §3.4
@@ -373,7 +374,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Both entry points work; cash receipt → debits cash; bank transfer → debits bank account; card with fee → expense account debited
 
 ### T-3.22 — AR Aging report (query + endpoint + page + export)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/reports/ar-aging.ts`, route in `reports.ts` (EDIT), `apps/web/src/app/(authenticated)/reports/ar-aging/page.tsx`, `apps/api/src/pdf/ar-aging.tsx` (NEW)
 - **Reads:** specs/04 §3.5, specs/08 §AR Aging
@@ -387,7 +388,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Buckets correct; sum across buckets per customer = customer's open AR balance; matches sum of (invoice.total - paid_amount) for POSTED invoices
 
 ### T-3.23 — Customer statement on `/ar/customers/[id]`
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/ar/customer-statement.tsx`, `apps/api/src/lib/reports/customer-statement.ts` (NEW)
 - **Reads:** specs/04 §3.1 (Customer detail)
@@ -400,7 +401,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Running balance ties out to customer's total AR; clicking row navigates to invoice/receipt detail
 
 ### T-3.24 — `/ar/dashboard` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/ar/dashboard/page.tsx` (NEW)
 - **Reads:** specs/04 §3.1
@@ -414,7 +415,7 @@ T-3.4 (Invoice math) ─┬───┼─ T-3.5/.6 (Invoice draft) ─ T-3.7 (I
 - **Done when:** Cards show correct numbers; overdue list links to AR aging filtered
 
 ### T-3.25 — AR Zod schemas
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-07)
 - **Model:** DeepSeek
 - **Files:** `packages/shared/src/schemas/ar.ts` (NEW)
 - **Reads:** specs/05 §AR (all request shapes)
