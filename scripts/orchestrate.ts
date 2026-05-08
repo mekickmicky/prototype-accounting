@@ -1125,6 +1125,12 @@ async function cmdAuto(rest: string[]): Promise<void> {
 
   let cycleCount = 0;
   let consecutiveEmptyCycles = 0;
+  // Safeguard #4: any-reason idle counter (vs consecutiveEmptyCycles which only
+  // increments on the conflict-blocked subcase). Used for long-idle alerts.
+  let consecutiveIdleCycles = 0;
+  let longIdleWarned = false;
+  const IDLE_WARN_CYCLES = 10;  // ~5 min at 30s delay
+  const IDLE_STOP_CYCLES = 30;  // ~15 min at 30s delay — likely stuck
   const startedThisRun: string[] = [];
   const seenWip = new Set<string>();
   const seenDone = new Set<string>();
@@ -1237,6 +1243,25 @@ async function cmdAuto(rest: string[]): Promise<void> {
       stopReason = 'no ready tasks and no WIP — nothing to progress';
       break;
     }
+    // Safeguard #4: detect "filter exhausted" — every task in the active
+    // --phase / --include filter is Done or Blocked. Without this check the
+    // loop sits idle forever when the user filters to a phase whose tasks
+    // are all complete but other phases still have ready work.
+    if (opts.phases || opts.include) {
+      const filteredAll = tasks.filter((t) => {
+        if (opts.exclude.has(t.id)) return false;
+        if (opts.include) return opts.include.has(t.id);
+        if (opts.phases) return opts.phases.has(t.phase);
+        return false;
+      });
+      const fDone = filteredAll.filter((t) => t.status === 'done').length;
+      const fBlocked = filteredAll.filter((t) => t.status === 'blocked').length;
+      const fOpen = filteredAll.length - fDone - fBlocked;
+      if (fOpen === 0 && counts.wip === 0) {
+        stopReason = `🎉 phase complete (${fDone}/${filteredAll.length} done, ${fBlocked} blocked) — filter exhausted`;
+        break;
+      }
+    }
     if (opts.stopOnBlocked && counts.blocked > 0) {
       stopReason = `blocked task detected (${counts.blocked})`;
       break;
@@ -1263,12 +1288,26 @@ async function cmdAuto(rest: string[]): Promise<void> {
     });
 
     if (batch.length === 0) {
+      consecutiveIdleCycles += 1;
       const conflictBlocked =
         filteredCandidates.length > 0 && slots > 0 && batch.length === 0;
       if (conflictBlocked) {
         consecutiveEmptyCycles += 1;
       } else {
         consecutiveEmptyCycles = 0;
+      }
+      // Safeguard #4: alert + halt on prolonged idle so the user is never
+      // left guessing whether the orchestrator is stuck or waiting on slow
+      // workers. Warn once at 10 cycles, halt at 30.
+      if (!longIdleWarned && consecutiveIdleCycles >= IDLE_WARN_CYCLES) {
+        longIdleWarned = true;
+        notifyAuto(
+          `⚠️ auto idle ${consecutiveIdleCycles} cycles (~${Math.round((consecutiveIdleCycles * opts.delaySec) / 60)} min). wip=${counts.wip}/${MAX_PARALLEL}, filtered_ready=${filteredCandidates.length}. Will halt at ${IDLE_STOP_CYCLES}.`,
+        );
+      }
+      if (consecutiveIdleCycles >= IDLE_STOP_CYCLES) {
+        stopReason = `idle for ${consecutiveIdleCycles} cycles — halting (likely stuck WIP or no progress)`;
+        break;
       }
       if (conflictBlocked && consecutiveEmptyCycles >= opts.stopOnError) {
         stopReason = `${consecutiveEmptyCycles} consecutive cycles where filtered candidates exist but file conflicts blocked all spawn`;
@@ -1280,6 +1319,8 @@ async function cmdAuto(rest: string[]): Promise<void> {
       autoTrace?.event({ name: 'cycle:idle', metadata: { cycle: cycleCount, wip: counts.wip, done: counts.done, total: tasks.length } });
     } else {
       consecutiveEmptyCycles = 0;
+      consecutiveIdleCycles = 0;
+      longIdleWarned = false;
       console.log(
         `[cycle ${cycleCount}] wip=${counts.wip}/${MAX_PARALLEL} done=${counts.done}/${tasks.length} — spawning: ${batch.map((t) => t.id).join(', ')}`,
       );
