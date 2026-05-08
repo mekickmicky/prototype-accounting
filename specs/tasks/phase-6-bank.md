@@ -42,7 +42,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 ## Tasks
 
 ### T-6.1 — `BankProvider` interface
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/bank/provider.ts` (NEW)
 - **Reads:** specs/07 §The Interface
@@ -55,7 +55,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Type-checks; importable
 
 ### T-6.2 — `MockBankProvider` implementation
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/bank/mock-provider.ts` (NEW)
 - **Reads:** specs/07 §Mock Provider, §Mock txn templates
@@ -70,7 +70,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Calling `importStatement` for May 2026 returns 30–50 txns; same call returns identical list; ratio of CR/DR roughly 60/40 for incoming clinic
 
 ### T-6.3 — `getBankProvider` factory
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** DeepSeek
 - **Files:** `apps/api/src/lib/bank/index.ts` (NEW)
 - **Reads:** specs/07 §Provider Selection
@@ -82,7 +82,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Returns MockBankProvider instance; throws "Unknown bank provider" on bad env
 
 ### T-6.4 — BankAccountService CRUD
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/bank-account.ts` (NEW)
 - **Reads:** specs/01 §BankAccount
@@ -94,7 +94,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Balance for KBank current matches sum of bank-related JE lines
 
 ### T-6.5 — `/api/v1/bank-accounts` endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/bank-accounts.ts` (NEW)
 - **Reads:** specs/05 §Bank
@@ -108,7 +108,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Round-trip; transactions filter works
 
 ### T-6.6 — CSV parser (Thai bank format)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/bank/csv-parser.ts` (NEW)
 - **Reads:** specs/07 §CSV Format
@@ -122,7 +122,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Test fixture CSVs (one per bank) parse to expected `BankTransactionRaw[]`; malformed CSV throws with line ref
 
 ### T-6.7 — Bank import service (with dedup)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/bank-import.ts` (NEW)
 - **Reads:** specs/07 §Idempotency, specs/02 §8.1
@@ -139,7 +139,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Re-importing same period imports 0 new (all skipped); first import inserts all; AuditLog row exists
 
 ### T-6.8 — `/api/v1/bank/import` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/bank.ts` (NEW)
 - **Reads:** specs/05 §Bank
@@ -150,7 +150,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Round-trip; mock import returns deterministic count
 
 ### T-6.9 — Auto-match heuristic
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/bank/auto-match.ts` (NEW)
 - **Reads:** specs/02 §8.2, specs/07 §Reconciliation Heuristic
@@ -166,7 +166,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Fixture test: bank txn 1500 CR on 2026-05-08 with 1 receipt 1500 on 2026-05-07 → top suggestion confidence ≥ 0.85
 
 ### T-6.13 — BankReconciliationService (match / unmatch / ignore / create JE)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/bank-reconciliation.ts` (NEW)
 - **Reads:** specs/02 §8.1, §8.3
@@ -181,7 +181,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** All 4 ops + view query work; matching same txn twice returns ALREADY_MATCHED
 
 ### T-6.14 — `/api/v1/bank/reconcile|ignore-txn|verify-slip` + view endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/bank.ts` (EDIT)
 - **Reads:** specs/05 §Bank
@@ -196,7 +196,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Round-trip; view returns sorted suggestions per unmatched txn
 
 ### T-6.15 — `/api/v1/bank/verify-slip` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/bank.ts` (EDIT)
 - **Reads:** specs/05 §POST /bank/verify-slip, specs/07 §Slip Verification UX
@@ -208,7 +208,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** `MOCK-INVALID-XYZ` returns verified=false; `MOCK-MISMATCH-1234` returns verified=true with amount mismatch; other refs return verified=true clean
 
 ### T-6.10 — `/bank/accounts` UI
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/bank/accounts/page.tsx`, `[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §6.1
@@ -220,7 +220,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Lists 3 seeded accounts (Cash, KBank current, KBank ภพ.30); detail shows transactions
 
 ### T-6.11 — `/bank/import` UI
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/bank/import/page.tsx` (NEW)
 - **Reads:** specs/04 §6, specs/07 §Bank Import UX
@@ -233,7 +233,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Mock import → preview → import → redirect → reconcile shows newly imported txns
 
 ### T-6.12 — `/bank/reconcile/[account_id]` UI (two-pane workspace)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/bank/reconcile/[account_id]/page.tsx`, `apps/web/src/components/bank/reconcile-workspace.tsx` (NEW)
 - **Reads:** specs/04 §6.2, wireframes/06-bank-reconcile.html
@@ -250,7 +250,7 @@ T-6.9 (Auto-match heuristic) ─ T-6.13 (Reconcile service) ─ T-6.14 (Reconcil
 - **Done when:** Visually matches wireframe; full reconcile flow works for a full month of mock data
 
 ### T-6.16 — Slip verify in Receipt form
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/ar/receipt-form.tsx` (EDIT — Phase 3 file)
 - **Reads:** specs/07 §Slip Verification UX

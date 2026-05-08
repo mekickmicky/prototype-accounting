@@ -32,6 +32,10 @@ const HTTP_STATUS_MAP = {
   PND_NOT_FINALIZED: 409,
   WEBHOOK_SIGNATURE_INVALID: 401,
   IDEMPOTENT_REPLAY: 200,
+  INVALID_CSV: 400,
+  ALREADY_MATCHED: 409,
+  NOT_MATCHED: 409,
+  ALREADY_IGNORED: 409,
   INTERNAL_ERROR: 500,
 } as const;
 
@@ -84,6 +88,10 @@ const STATIC_THAI: Partial<Record<ErrorCode, string>> = {
   PND_NOT_FINALIZED: 'แบบ ภงด. นี้ยังไม่ได้ปิดยอด ไม่สามารถยื่นได้',
   WEBHOOK_SIGNATURE_INVALID: 'ลายเซ็นต์ Webhook ไม่ถูกต้อง',
   IDEMPOTENT_REPLAY: 'รายการนี้ดำเนินการไปแล้ว ส่งคืนผลเดิม',
+  INVALID_CSV: 'ไฟล์ CSV ไม่ถูกต้อง',
+  ALREADY_MATCHED: 'รายการธนาคารนี้ถูกจับคู่ไปแล้ว',
+  NOT_MATCHED: 'รายการธนาคารนี้ยังไม่ได้จับคู่',
+  ALREADY_IGNORED: 'รายการธนาคารนี้ถูกข้ามไปแล้ว',
   INTERNAL_ERROR: 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง',
 };
 

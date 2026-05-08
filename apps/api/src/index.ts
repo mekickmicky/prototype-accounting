@@ -8,6 +8,7 @@ import { customerRoutes } from "./routes/customers";
 import { salesInvoiceRoutes } from "./routes/sales-invoices";
 import { receiptRoutes } from "./routes/receipts";
 import { bankAccountRoutes } from "./routes/bank-accounts";
+import { bankRoutes } from "./routes/bank";
 import { vendorRoutes } from "./routes/vendors";
 import { billRoutes } from "./routes/bills";
 import { paymentRoutes } from "./routes/payments";
@@ -31,6 +32,7 @@ const app = new Elysia()
       .use(salesInvoiceRoutes)
       .use(receiptRoutes)
       .use(bankAccountRoutes)
+      .use(bankRoutes)
       .use(vendorRoutes)
       .use(billRoutes)
       .use(paymentRoutes)

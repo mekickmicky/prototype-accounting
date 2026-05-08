@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { CustomerPicker, type CustomerOption } from "@/components/ui/customer-picker";
+import { SlipVerifyWidget, type SlipVerifyStatus } from "@/components/ar/receipt-form";
 import { ApiError } from "@/lib/api-client";
 import { format } from "date-fns";
 
@@ -145,6 +146,8 @@ function NewReceiptForm() {
   const [totalAmount, setTotalAmount] = useState("0.00");
   const [totalOverride, setTotalOverride] = useState(false);
 
+  const [slipVerifyStatus, setSlipVerifyStatus] = useState<SlipVerifyStatus>("idle");
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -259,8 +262,14 @@ function NewReceiptForm() {
     }
   }
 
+  const needsSlipVerify = paymentMethod === "TRANSFER" || paymentMethod === "PROMPTPAY";
+
   async function handlePost() {
     if (!customerId) { setError("กรุณาเลือกลูกค้า"); return; }
+    if (needsSlipVerify && slipVerifyStatus !== "ok") {
+      setError("กรุณาตรวจสอบสลิปก่อนบันทึก (Verify the payment slip first)");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -465,6 +474,7 @@ function NewReceiptForm() {
                     setPaymentMethod(e.target.value as PaymentMethod);
                     setBankAccountId("");
                     setCardFee("0");
+                    setSlipVerifyStatus("idle");
                   }}
                   style={SELECT}
                 >
@@ -500,7 +510,17 @@ function NewReceiptForm() {
                 </div>
               )}
 
-              {paymentMethod !== "CASH" && (
+              {(paymentMethod === "TRANSFER" || paymentMethod === "PROMPTPAY") && (
+                <SlipVerifyWidget
+                  slipRef={slipRef}
+                  onSlipRefChange={setSlipRef}
+                  expectedAmount={totalAmount}
+                  receiptDate={receiptDate}
+                  onStatusChange={setSlipVerifyStatus}
+                />
+              )}
+
+              {paymentMethod !== "CASH" && paymentMethod !== "TRANSFER" && paymentMethod !== "PROMPTPAY" && (
                 <div>
                   <label style={LABEL}>Slip Ref</label>
                   <input type="text" value={slipRef} onChange={(e) => setSlipRef(e.target.value)} style={INPUT} placeholder="เลขที่อ้างอิงการโอน" />

@@ -9,7 +9,8 @@ export type AuditAction =
   | 'PERIOD_CLOSE'
   | 'PERIOD_REOPEN'
   | 'LOGIN'
-  | 'EXPORT';
+  | 'EXPORT'
+  | 'IMPORT';
 
 export interface LogAuditEventInput {
   actor_id?: string;
