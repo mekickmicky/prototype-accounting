@@ -6,5 +6,6 @@ export * from "./schemas/common";
 export * from "./schemas/gl";
 export * from "./schemas/ar";
 export * from "./schemas/ap";
+export * from "./schemas/tax";
 export { CLINIC_SERVICES, findService } from "./catalog/services";
 export type { CatalogService, ServiceCategory } from "./catalog/services";

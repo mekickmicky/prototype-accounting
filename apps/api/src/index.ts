@@ -10,7 +10,8 @@ import { receiptRoutes } from "./routes/receipts";
 import { bankAccountRoutes } from "./routes/bank-accounts";
 import { vendorRoutes } from "./routes/vendors";
 import { billRoutes } from "./routes/bills";
-import { paymentRoutes, taxFilingRoutes } from "./routes/payments";
+import { paymentRoutes } from "./routes/payments";
+import { taxFilingRoutes } from "./routes/tax-filings";
 import { errorHandler } from "./middleware/error-handler";
 
 const PORT = Number(process.env.PORT ?? 3001);

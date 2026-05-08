@@ -45,7 +45,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 ## Tasks
 
 ### T-5.1 — PP30 aggregator (VatRegister query)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/tax/pp30-aggregate.ts` (NEW)
 - **Reads:** specs/03 §4.2, specs/01 §VatRegister
@@ -60,7 +60,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Unit test with seeded month: aggregate matches manual SUM on register; voided invoice's reversal pair nets to zero
 
 ### T-5.2 — TaxFilingService (PP30 lifecycle)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/tax-filing.ts` (NEW)
 - **Reads:** specs/04 §5.2, specs/02 §4.7
@@ -76,7 +76,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** State machine enforced; finalized filing locks register rows (re-running aggregate excludes them)
 
 ### T-5.3 — PP30 closing JE (auto-post on submit)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/tax-filing.ts` (EDIT — submit method calls this)
 - **Reads:** specs/02 §4.7, specs/03 §4.4
@@ -93,7 +93,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Submit posts closing JE; subsequent TB shows VAT Payable + VAT Receivable both zeroed for the period
 
 ### T-5.4 — PND3/PND53 aggregator (WithholdingRecord query)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/tax/pnd-aggregate.ts` (NEW)
 - **Reads:** specs/03 §5.5, §5.6
@@ -107,7 +107,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** PND3 query returns only INDIVIDUAL vendor records; PND53 only JURISTIC
 
 ### T-5.6 — TaxFilingService (PND3/PND53 lifecycle)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/tax-filing.ts` (EDIT)
 - **Reads:** specs/03 §5.6, specs/02 §4.8
@@ -121,7 +121,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Two filings can coexist for same period (PND3 + PND53); each clears its slice of WHT Payable
 
 ### T-5.5 — `/api/v1/tax-filings` PP30 endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/tax-filings.ts` (NEW)
 - **Reads:** specs/05 §Tax: Filings
@@ -139,7 +139,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Full lifecycle round-trip: preview → create → finalize → submit; pdf endpoint returns binary
 
 ### T-5.7 — `/api/v1/tax-filings` PND endpoints
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/tax-filings.ts` (EDIT)
 - **Reads:** specs/05 §Tax: Filings
@@ -152,7 +152,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Round-trip for both PND3 and PND53
 
 ### T-5.8 — PP30 PDF generator
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/pdf/pp30.tsx` (NEW)
 - **Reads:** specs/03 §4.5
@@ -166,7 +166,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Renders for a finalized filing with full data
 
 ### T-5.9 — PND3/PND53 PDF generators
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/pdf/pnd3.tsx`, `pnd53.tsx` (NEW)
 - **Reads:** specs/03 §5.7
@@ -179,7 +179,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Both render with correct totals
 
 ### T-5.10 — `/tax/pp30` UI (list / new / detail)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/tax/pp30/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §5.1, specs/04 §5.2, wireframes/05-pp30.html
@@ -192,7 +192,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Full UI flow works; matches wireframes/05-pp30.html visually
 
 ### T-5.11 — `/tax/pnd3` UI
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/tax/pnd3/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §5.1
@@ -202,7 +202,8 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Round-trip works for INDIVIDUAL vendors
 
 ### T-5.12 — `/tax/pnd53` UI
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Budget USD:** 2.50
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/tax/pnd53/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (NEW)
 - **Reads:** specs/04 §5.1
@@ -212,7 +213,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Round-trip works
 
 ### T-5.13 — Tax Zod schemas
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** DeepSeek
 - **Files:** `packages/shared/src/schemas/tax.ts` (NEW)
 - **Reads:** specs/05 §Tax
@@ -222,7 +223,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Importable, validates at API boundary
 
 ### T-5.14 — `/tax/dashboard` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/tax/dashboard/page.tsx` (NEW)
 - **Reads:** specs/04 §5.1
@@ -236,7 +237,7 @@ T-4.19 (WHT cert PDF, Phase 4) ─ T-5.15 (cert browser)                 │
 - **Done when:** Cards show live numbers; deadline indicators correct
 
 ### T-5.15 — `/tax/wht-certs` browser
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/tax/wht-certs/page.tsx`, route `GET /tax-filings/wht-certs` (NEW)
 - **Reads:** specs/04 §5.3

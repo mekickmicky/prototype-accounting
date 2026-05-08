@@ -72,10 +72,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Tax",
     Icon: Calculator,
     items: [
+      { label: "Dashboard", href: "/tax/dashboard", ready: true },
       { label: "VAT Register", href: "/tax/vat-register" },
-      { label: "ภพ.30", href: "/tax/pp30" },
-      { label: "ภงด.3 / 53", href: "/tax/pnd" },
-      { label: "Withholding Certs", href: "/tax/wht-certs" },
+      { label: "ภพ.30", href: "/tax/pp30", ready: true },
+      { label: "ภงด.3", href: "/tax/pnd3" },
+      { label: "ภงด.53", href: "/tax/pnd53" },
+      { label: "Withholding Certs", href: "/tax/wht-certs", ready: true },
     ],
   },
   {

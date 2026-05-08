@@ -276,18 +276,3 @@ export const paymentRoutes = new Elysia({ prefix: '/payments' })
     });
   });
 
-export const taxFilingRoutes = new Elysia({ prefix: '/tax-filings' })
-  .use(authGuard)
-
-  // GET /tax-filings/wht-certs/:id/pdf
-  .get('/wht-certs/:id/pdf', async ({ params }) => {
-    const data = await buildWhtCertData(params.id);
-    const element = React.createElement(WhtCertPDF, { data });
-    const buffer = await renderToBuffer(element);
-    return new Response(buffer, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="wht-cert-${data.cert_no}.pdf"`,
-      },
-    });
-  });
