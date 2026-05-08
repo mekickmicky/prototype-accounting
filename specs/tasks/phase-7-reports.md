@@ -48,7 +48,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 ## Tasks
 
 ### T-7.1 — Common report types + query helpers
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/reports/common.ts` (NEW)
 - **Spec:**
@@ -60,7 +60,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Importable; helpers unit-tested
 
 ### T-7.2 — P&L query
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/reports/profit-loss.ts` (NEW)
 - **Reads:** specs/08 §2
@@ -76,7 +76,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Sum of revenue lines = total revenue; net income = revenue - all expenses; comparative columns aligned
 
 ### T-7.3 — `/api/v1/reports/profit-loss` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/reports.ts` (EDIT)
 - **Spec:**
@@ -87,7 +87,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** All formats return 200; periods Jan–May returns net income matching manual SUM
 
 ### T-7.4 — `/reports/profit-loss` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/reports/profit-loss/page.tsx` (NEW)
 - **Reads:** specs/08 §2, specs/06 §Report layouts
@@ -104,7 +104,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Visually matches spec 08 §2 structure; drill-down works
 
 ### T-7.5 — P&L PDF template
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/pdf/profit-loss.tsx` (NEW)
 - **Spec:** A4 portrait; company header; period in Buddhist Era; same sectioned layout as UI; subtotals and totals bold
@@ -113,7 +113,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Renders; numbers tie to JSON
 
 ### T-7.6 — Balance Sheet query
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/reports/balance-sheet.ts` (NEW)
 - **Reads:** specs/08 §3
@@ -129,7 +129,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Test: BS at end of seeded month is balanced; force unbalanced data → returns balanced=false with imbalance
 
 ### T-7.7 — `/api/v1/reports/balance-sheet` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/reports.ts` (EDIT)
 - **Spec:** `GET /reports/balance-sheet?as_of=&branch=&comparative=&format=`
@@ -138,7 +138,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** All formats return; matches manual computation
 
 ### T-7.8 — `/reports/balance-sheet` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/reports/balance-sheet/page.tsx` (NEW)
 - **Spec:**
@@ -152,7 +152,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Renders; A=L+E line shown explicitly
 
 ### T-7.9 — BS PDF template
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/pdf/balance-sheet.tsx` (NEW)
 - **Spec:** Two-column "Assets | Liabilities + Equity" layout per traditional Thai BS, A4 portrait
@@ -161,7 +161,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Renders; numbers tie
 
 ### T-7.10 — Cash Flow query (indirect method)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/lib/reports/cash-flow.ts` (NEW)
 - **Reads:** specs/08 §Cash Flow Statement
@@ -177,7 +177,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Test: net change matches sum of (11xxx balance changes)
 
 ### T-7.11 — `/api/v1/reports/cash-flow` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/reports.ts` (EDIT)
 - **Spec:** `GET /reports/cash-flow?period_from=&period_to=&branch=&format=`
@@ -186,7 +186,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Round-trip; invariant holds
 
 ### T-7.12 — `/reports/cash-flow` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/reports/cash-flow/page.tsx` (NEW)
 - **Spec:** 3 sections (Operating, Investing, Financing); explicit "Net change in cash" line; "Cash beginning" + "Cash ending" boxes; reconciliation note
@@ -195,7 +195,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Page renders; reconciliation between net change and cash delta is explicit and ties
 
 ### T-7.13 — CF PDF template
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/pdf/cash-flow.tsx` (NEW)
 - **Spec:** A4 portrait, sectioned, totals bold, reconciliation line
@@ -204,7 +204,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Renders; numbers tie
 
 ### T-7.14 — General Ledger detail query
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/reports/general-ledger.ts` (NEW)
 - **Reads:** specs/08 §General Ledger detail
@@ -217,7 +217,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Sum of period rows + opening = closing; matches Trial Balance for that account at period_to
 
 ### T-7.15 — `/api/v1/reports/general-ledger` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/reports.ts` (EDIT)
 - **Spec:** `GET /reports/general-ledger?account=&period_from=&period_to=&branch=&format=`
@@ -226,7 +226,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Round-trip; running balance matches T-7.14
 
 ### T-7.16 — `/reports/general-ledger` page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/reports/general-ledger/page.tsx` (NEW)
 - **Spec:**
@@ -240,7 +240,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Drill from BS → GL detail works; running balance correct; clicking JE no opens JE detail
 
 ### T-7.17 — VAT Summary report
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/reports/vat-summary.ts`, route in `reports.ts` (EDIT), `apps/web/src/app/(authenticated)/reports/vat-summary/page.tsx`, `apps/api/src/pdf/vat-summary.tsx` (NEW)
 - **Reads:** specs/08 §VAT Summary
@@ -253,7 +253,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Numbers match Phase 5 PP30 aggregator for each period
 
 ### T-7.18 — Cash Position report
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/reports/cash-position.ts`, route, `apps/web/src/app/(authenticated)/reports/cash-position/page.tsx`, PDF (NEW)
 - **Reads:** specs/08 §Cash Position
@@ -266,7 +266,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Matches sum of 11xxx account balances at end of period
 
 ### T-7.19 — Branch P&L (multi-column)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/reports/branch-pnl.ts`, route, `apps/web/src/app/(authenticated)/reports/branch-pnl/page.tsx`, PDF (NEW)
 - **Reads:** specs/08 §2 (Branch breakdown)
@@ -279,7 +279,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Sum across branches per account = total column
 
 ### T-7.20 — Common report filter bar
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/reports/filter-bar.tsx` (NEW)
 - **Reads:** specs/08 §Common Report Patterns
@@ -295,7 +295,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** Mounts in any report page; URL state preserves filters across reload
 
 ### T-7.21 — Comparative mode plumbing
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/components/reports/comparative-table.tsx`, `apps/api/src/lib/reports/comparative.ts` (NEW or EDIT existing reports)
 - **Spec:**
@@ -307,7 +307,7 @@ T-7.1 (Common report types) ─┬─ T-7.2 (P&L query) ─ T-7.3 (P&L API) ─ 
 - **Done when:** P&L with comparative shows two columns + % change; BS with comparative shows two as-of dates
 
 ### T-7.22 — Common export utilities (CSV/XLSX/PDF wiring)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** DeepSeek
 - **Files:** `apps/api/src/lib/exports/report-csv.ts`, `report-xlsx.ts`, `apps/api/src/lib/exports/pdf-renderer.ts` (NEW or extend T-2.27)
 - **Spec:**

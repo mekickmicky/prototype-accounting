@@ -59,6 +59,12 @@ const WIP_STARTED_FILE = join(ROOT, '.orchestrator.wip-started.json');
 const LOG_DIR = process.env.WORKER_LOG_DIR ?? '/tmp/wind-acc-orchestrator';
 const PANE_SCAN_TAIL_LINES = 500;
 
+// Per-task sidecar metadata file written by scripts/claude-worker.ts on exit.
+// Holds model / session_id / token usage / total_cost_usd from claude's
+// stream-json `result` event. Read on done/blocked transition to ingest a
+// Langfuse `generation` observation under the task span (Issue 02).
+const metaPathFor = (id: string) => join(LOG_DIR, `${id}.meta.json`);
+
 // Init log dir synchronously at startup so spawnInPane can always write.
 mkdirSync(LOG_DIR, { recursive: true });
 mkdirSync(join(LOG_DIR, 'archive'), { recursive: true });
@@ -463,12 +469,9 @@ async function killAndBlock(task: Task, reason: string, dryRun = false): Promise
   const blockMsg = `Blocked (${today}) — ${reason} (${elapsedMin}m > ${capMin}m cap)`;
 
   if (!dryRun) {
-    // Close the zellij tab by name (the tab is named after the task id)
-    spawnSync(
-      'zellij',
-      ['--session', SESSION, 'action', 'close-tab', '--name', task.id],
-      { encoding: 'utf-8' },
-    );
+    // close-tab only accepts --tab-id (numeric). Navigate by name first, then close.
+    spawnSync('zellij', ['--session', SESSION, 'action', 'go-to-tab-name', task.id], { encoding: 'utf-8' });
+    spawnSync('zellij', ['--session', SESSION, 'action', 'close-tab'], { encoding: 'utf-8' });
   }
 
   await setStatus(task, 'blocked', blockMsg);
@@ -576,7 +579,7 @@ async function warnPattern(task: Task, hit: ScanHit): Promise<boolean> {
   return false;
 }
 
-/** Rotate logs older than 24h to ${LOG_DIR}/archive/ (gzip with Bun shell). */
+/** Rotate logs (.log + per-task .meta.json) older than 24h to ${LOG_DIR}/archive/. */
 async function rotateLogs(): Promise<void> {
   try {
     const archiveDir = join(LOG_DIR, 'archive');
@@ -584,7 +587,9 @@ async function rotateLogs(): Promise<void> {
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
     const files = await readdir(LOG_DIR);
     for (const f of files) {
-      if (!f.endsWith('.log')) continue;
+      const isLog = f.endsWith('.log');
+      const isMeta = f.endsWith('.meta.json');
+      if (!isLog && !isMeta) continue;
       const fullPath = join(LOG_DIR, f);
       try {
         const stat = Bun.file(fullPath);
@@ -695,7 +700,17 @@ function buildLaunchCommand(task: Task): string {
 
   // Single-quote escape for shell
   const promptQuoted = `'${prompt.replace(/'/g, `'\\''`)}'`;
-  return `cd ${ROOT} && ${provider.alias} && claude ${provider.flags} ${promptQuoted}`;
+  // Route claude through scripts/claude-worker.ts so the wrapper can capture
+  // model + token usage + cost into a sidecar meta file (Issue 02). The
+  // wrapper appends `--output-format stream-json --verbose` itself; everything
+  // before `--` is the wrapper's own arg, everything after is forwarded to
+  // claude verbatim. TASK_ID env is read by the wrapper for the meta payload.
+  const worker = join(ROOT, 'scripts/claude-worker.ts');
+  const meta = metaPathFor(task.id);
+  return (
+    `cd ${ROOT} && ${provider.alias} && ` +
+    `TASK_ID=${task.id} bun ${worker} ${meta} -- ${provider.flags} ${promptQuoted}`
+  );
 }
 
 function notify(type: 'start' | 'done' | 'blocked' | 'error' | 'info', taskId: string, message: string): void {
@@ -710,6 +725,76 @@ function notify(type: 'start' | 'done' | 'blocked' | 'error' | 'info', taskId: s
 const activeSpans = new Map<string, ReturnType<ReturnType<Langfuse['trace']>['span']>>();
 let autoTrace: ReturnType<Langfuse['trace']> | null = null;
 
+/**
+ * Close a task span and, if a sidecar meta file was written by claude-worker.ts,
+ * emit a child `generation` observation with model + token usage so Langfuse
+ * can compute cost (Issue 02 — docs/issue/done/002-...).
+ *
+ * Safe to call even when meta is missing (worker killed, JSON malformed, etc.) —
+ * the span just closes without a generation child.
+ */
+async function closeSpanWithCost(
+  taskId: string,
+  status: 'done' | 'blocked',
+  reason?: string,
+): Promise<void> {
+  const span = activeSpans.get(taskId);
+  if (!span) return;
+  activeSpans.delete(taskId);
+
+  let meta: {
+    model?: string | null;
+    sessionId?: string | null;
+    durationMs?: number | null;
+    durationApiMs?: number | null;
+    numTurns?: number | null;
+    totalCostUsd?: number | null;
+    isError?: boolean;
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    } | null;
+  } | null = null;
+
+  try {
+    const raw = await readFile(metaPathFor(taskId), 'utf-8');
+    meta = JSON.parse(raw);
+  } catch {
+    // No meta file — worker was killed or older claude didn't emit one.
+  }
+
+  if (meta?.usage && meta.model) {
+    const u = meta.usage;
+    const inputTokens =
+      (u.input_tokens ?? 0) +
+      (u.cache_creation_input_tokens ?? 0) +
+      (u.cache_read_input_tokens ?? 0);
+    const outputTokens = u.output_tokens ?? 0;
+    const gen = span.generation({
+      name: `${taskId}:llm`,
+      model: meta.model,
+      usage: { input: inputTokens, output: outputTokens, unit: 'TOKENS' },
+      metadata: {
+        sessionId: meta.sessionId,
+        numTurns: meta.numTurns,
+        durationMs: meta.durationMs,
+        durationApiMs: meta.durationApiMs,
+        totalCostUsdReportedByClaude: meta.totalCostUsd,
+        cacheCreationTokens: u.cache_creation_input_tokens ?? 0,
+        cacheReadTokens: u.cache_read_input_tokens ?? 0,
+      },
+    });
+    gen.end({ level: meta.isError ? 'ERROR' : 'DEFAULT' });
+  }
+
+  span.end({
+    output: { status, reason: reason ?? null },
+    level: status === 'blocked' ? 'WARNING' : 'DEFAULT',
+  });
+}
+
 function spawnInPane(task: Task, dryRun: boolean): string {
   const cmd = buildLaunchCommand(task);
   // Safeguard #3: tee worker output to per-task log for error scanning.
@@ -723,7 +808,9 @@ function spawnInPane(task: Task, dryRun: boolean): string {
   // Done tasks just disappear cleanly. Pane scrollback is gone but `tee` already
   // captured everything to logs.
   const logPath = join(LOG_DIR, `${task.id}.log`);
-  const wrappedCmd = `${cmd} 2>&1 | tee ${logPath}; zellij action close-tab`;
+  // Navigate to this tab by name before closing so we always close the right tab
+  // (close-tab without --tab-id closes the "focused" tab, which is user-dependent).
+  const wrappedCmd = `${cmd} 2>&1 | tee ${logPath}; zellij action go-to-tab-name ${task.id} 2>/dev/null; zellij action close-tab 2>/dev/null || true`;
   if (dryRun) {
     console.log(`# ${task.id} (${task.model}) — would run in zellij:${SESSION}:${task.id}`);
     console.log(`# log: ${logPath}`);
@@ -901,12 +988,8 @@ async function cmdDone(id: string): Promise<void> {
   await clearWipStart(id);
   console.log(`Marked ${id} as done.`);
   notify('done', t.id, t.name);
-  const span = activeSpans.get(id);
-  if (span) {
-    span.end({ output: { status: 'done' }, level: 'DEFAULT' });
-    activeSpans.delete(id);
-    await lf?.flushAsync();
-  }
+  await closeSpanWithCost(id, 'done');
+  await lf?.flushAsync();
 }
 
 async function cmdSchedule(): Promise<void> {
@@ -1226,11 +1309,19 @@ async function cmdAuto(rest: string[]): Promise<void> {
     for (const t of tasks) {
       if (t.status === 'done' && !seenDone.has(t.id)) {
         seenDone.add(t.id);
-        if (!opts.dryRun) { await clearWipStart(t.id); clearWarnCounters(t.id); }
+        if (!opts.dryRun) {
+          await clearWipStart(t.id);
+          clearWarnCounters(t.id);
+          await closeSpanWithCost(t.id, 'done');
+        }
       }
       if (t.status === 'blocked' && !seenBlocked.has(t.id)) {
         seenBlocked.add(t.id);
-        if (!opts.dryRun) { await clearWipStart(t.id); clearWarnCounters(t.id); }
+        if (!opts.dryRun) {
+          await clearWipStart(t.id);
+          clearWarnCounters(t.id);
+          await closeSpanWithCost(t.id, 'blocked');
+        }
       }
       if (t.status === 'wip' && !seenWip.has(t.id)) seenWip.add(t.id);
     }
@@ -1288,7 +1379,14 @@ async function cmdAuto(rest: string[]): Promise<void> {
     });
 
     if (batch.length === 0) {
-      consecutiveIdleCycles += 1;
+      // Only count truly idle cycles (no workers running). If WIP > 0, workers
+      // are active — don't penalise long-running tasks with an idle halt.
+      if (counts.wip === 0) {
+        consecutiveIdleCycles += 1;
+      } else {
+        consecutiveIdleCycles = 0;
+        longIdleWarned = false;
+      }
       const conflictBlocked =
         filteredCandidates.length > 0 && slots > 0 && batch.length === 0;
       if (conflictBlocked) {
