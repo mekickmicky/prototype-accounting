@@ -31,9 +31,13 @@ const MAX_PARALLEL = parseInt(process.env.MAX_PARALLEL ?? '3', 10);
 // worker exits non-zero. Safeguard #2 dead-pane scan detects it and marks the
 // task Blocked. For DeepSeek the flag is passed but may no-op (different
 // provider billing); Safeguard #2 wall-clock timeout is the real backstop.
+// Defaults bumped after Phase 3/4 run: 3 of 21 Sonnet tasks (UI list/new/detail
+// combos and PDF templates) hit the $1 cap. $1.50 covers the fat tail without
+// over-spending on simple Sonnet jobs. Per-task `Budget USD:` override remains
+// available for known-expensive tasks (e.g. T-3.21 $2.00).
 const BUDGET_USD = {
   Opus:     parseFloat(process.env.BUDGET_USD_OPUS     ?? '3.00'),
-  Sonnet:   parseFloat(process.env.BUDGET_USD_SONNET   ?? '1.00'),
+  Sonnet:   parseFloat(process.env.BUDGET_USD_SONNET   ?? '1.50'),
   DeepSeek: parseFloat(process.env.BUDGET_USD_DEEPSEEK ?? '0.50'),
 } as const;
 
@@ -95,7 +99,9 @@ const ERROR_PATTERNS: ErrorPattern[] = [
   // Tool / runtime — usually fatal for the task
   {
     name: 'budget_killed',
-    re: /max[_ ]?budget[_ ]?(exceeded|reached)/i,
+    // Claude Code prints `Error: Exceeded USD budget (N)` on hard-cap kill.
+    // Match a few phrasings to be resilient if the wording shifts.
+    re: /(exceeded[ _-]+(usd[ _-]+)?budget|max[ _-]?budget[ _-]?(exceeded|reached)|budget[ _-]+limit[ _-]+(reached|exceeded))/i,
     severity: 'fatal',
     hint: 'Hit --max-budget-usd cap from Safeguard #1',
   },
@@ -708,13 +714,16 @@ function spawnInPane(task: Task, dryRun: boolean): string {
   const cmd = buildLaunchCommand(task);
   // Safeguard #3: tee worker output to per-task log for error scanning.
   // tee's exit status masks the underlying exit (fine — we use log content, not exit code).
-  // Worker exits → tab auto-closes. NO trailing `exec zsh -i` (FD-leaked: every
-  // completed task held a zombie shell + PTY, hit EMFILE around tab #30 on macOS).
+  // Worker exits → tab self-closes via `zellij action close-tab` from inside.
+  // NO trailing `exec zsh -i` (FD-leaked: every completed task held a zombie
+  // shell + PTY, hit EMFILE around tab #30 on macOS). Without close-tab, zellij
+  // keeps the tab open as a "Process exited" placeholder which still consumes
+  // a tab slot AND defeats Safeguard #2's pane-gone orphan detection.
   // Safeguard #2 picks up "pane gone for WIP task" as orphan (resets to Todo);
   // Done tasks just disappear cleanly. Pane scrollback is gone but `tee` already
   // captured everything to logs.
   const logPath = join(LOG_DIR, `${task.id}.log`);
-  const wrappedCmd = `${cmd} 2>&1 | tee ${logPath}`;
+  const wrappedCmd = `${cmd} 2>&1 | tee ${logPath}; zellij action close-tab`;
   if (dryRun) {
     console.log(`# ${task.id} (${task.model}) — would run in zellij:${SESSION}:${task.id}`);
     console.log(`# log: ${logPath}`);
