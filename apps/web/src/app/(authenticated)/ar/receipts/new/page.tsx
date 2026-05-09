@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { CustomerPicker, type CustomerOption } from "@/components/ui/customer-picker";
 import { SlipVerifyWidget, type SlipVerifyStatus } from "@/components/ar/receipt-form";
 import { ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 import { format } from "date-fns";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -42,8 +43,8 @@ async function apiReq<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body.data as T;
 }
 
-function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
+function fmtMoney(val: string | number | Decimal): string {
+  const n = new Decimal(val ?? 0).toNumber();
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -174,7 +175,7 @@ function NewReceiptForm() {
       if (prefillInvoiceId) {
         const found = all.find((inv) => inv.id === prefillInvoiceId);
         if (found) {
-          const bal = (parseFloat(found.total) - parseFloat(found.paid_amount)).toFixed(2);
+          const bal = new Decimal(found.total).minus(new Decimal(found.paid_amount)).toFixed(2);
           setSelectedInvoices({ [found.id]: bal });
         }
       }
@@ -197,14 +198,17 @@ function NewReceiptForm() {
   // Recompute total when selection changes (unless user overrode it)
   useEffect(() => {
     if (!totalOverride) {
-      const sum = Object.values(selectedInvoices).reduce((s, v) => s + parseFloat(v || "0"), 0);
+      const sum = Object.values(selectedInvoices).reduce(
+        (s, v) => s.plus(new Decimal(v || "0")),
+        new Decimal(0)
+      );
       setTotalAmount(sum.toFixed(2));
     }
   }, [selectedInvoices, totalOverride]);
 
   function toggleInvoice(inv: Invoice, checked: boolean) {
     if (checked) {
-      const bal = (parseFloat(inv.total) - parseFloat(inv.paid_amount)).toFixed(2);
+      const bal = new Decimal(inv.total).minus(new Decimal(inv.paid_amount)).toFixed(2);
       setSelectedInvoices((prev) => ({ ...prev, [inv.id]: bal }));
     } else {
       setSelectedInvoices((prev) => {
@@ -228,7 +232,7 @@ function NewReceiptForm() {
 
   function buildPayload() {
     const applications = Object.entries(selectedInvoices)
-      .filter(([, amt]) => parseFloat(amt || "0") > 0)
+      .filter(([, amt]) => new Decimal(amt || "0").gt(0))
       .map(([invoice_id, applied_amount]) => ({ invoice_id, applied_amount }));
 
     return {
@@ -378,7 +382,7 @@ function NewReceiptForm() {
                     </thead>
                     <tbody>
                       {invoices.map((inv) => {
-                        const bal = parseFloat(inv.total) - parseFloat(inv.paid_amount);
+                        const bal = new Decimal(inv.total).minus(new Decimal(inv.paid_amount));
                         const checked = inv.id in selectedInvoices;
                         return (
                           <tr key={inv.id} style={{ background: checked ? "rgba(100,140,220,0.05)" : "transparent" }}>
@@ -414,7 +418,7 @@ function NewReceiptForm() {
                                   value={selectedInvoices[inv.id] ?? ""}
                                   onChange={(e) => setInvoiceAmount(inv.id, e.target.value)}
                                   min={0}
-                                  max={bal}
+                                  max={bal.toNumber()}
                                   step="0.01"
                                   style={{
                                     width: 90,

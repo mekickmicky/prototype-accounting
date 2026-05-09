@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Pencil, Trash2, Loader2, X, Check, ArrowLeft } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 import { CustomerStatement } from "@/components/ar/customer-statement";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -239,8 +240,8 @@ export default function CustomerDetailPage() {
     );
   }
 
-  const balance = parseFloat(customer.open_invoices.outstanding_balance);
-  const hasBalance = balance > 0;
+  const balance = new Decimal(customer.open_invoices.outstanding_balance);
+  const hasBalance = balance.gt(0);
 
   return (
     <div style={{ maxWidth: 880 }}>
@@ -637,7 +638,7 @@ export default function CustomerDetailPage() {
                 </span>
                 {" "}รายการ ·{" "}
                 <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: hasBalance ? "var(--error)" : "var(--text-primary)" }}>
-                  {parseFloat(customer.open_invoices.outstanding_balance).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {new Decimal(customer.open_invoices.outstanding_balance).toNumber().toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 {" "}บาท
               </div>
@@ -712,7 +713,7 @@ export default function CustomerDetailPage() {
                 marginBottom: 4,
               }}
             >
-              {parseFloat(customer.open_invoices.outstanding_balance).toLocaleString("th-TH", {
+              {new Decimal(customer.open_invoices.outstanding_balance).toNumber().toLocaleString("th-TH", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}

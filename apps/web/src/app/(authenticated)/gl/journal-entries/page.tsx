@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Download, Printer, Loader2 } from "lucide-react";
@@ -155,7 +155,7 @@ function exportCSV(entries: JournalEntry[], userMap: Record<string, string>) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function JournalEntriesPage() {
+function JournalEntriesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: userLoading } = useUser();
@@ -692,5 +692,13 @@ export default function JournalEntriesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function JournalEntriesPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-400">Loading…</div>}>
+      <JournalEntriesPageInner />
+    </Suspense>
   );
 }

@@ -90,6 +90,11 @@ function formatDate(dateStr: string): string {
   return `${day}/${month}/${year}`;
 }
 
+interface PeriodRecord {
+  code: string;
+  status: "OPEN" | "CLOSED";
+}
+
 export default function AccountDetailPage() {
   const params = useParams();
   const code = params.code as string;
@@ -99,6 +104,7 @@ export default function AccountDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
+  const [periodsMap, setPeriodsMap] = useState<Map<string, "OPEN" | "CLOSED">>(new Map());
 
   const fetchAccount = useCallback(async () => {
     setLoading(true);
@@ -119,6 +125,17 @@ export default function AccountDetailPage() {
     fetchAccount();
   }, [fetchAccount]);
 
+  // Fetch period statuses so the period picker shows OPEN vs CLOSED accurately
+  useEffect(() => {
+    apiClient.get<PeriodRecord[]>("/api/v1/periods")
+      .then((periods) => {
+        setPeriodsMap(new Map(periods.map((p) => [p.code, p.status])));
+      })
+      .catch(() => {
+        // Non-critical: fall back to treating all periods as OPEN
+      });
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48 gap-2">
@@ -136,12 +153,12 @@ export default function AccountDetailPage() {
     );
   }
 
-  // Derive unique periods from lines
+  // Derive unique periods from lines, using actual status from the fetched periods map
   const periodSet = new Set<string>();
   account.recent_lines.forEach((l) => periodSet.add(derivePeriodCode(l.je.entry_date)));
   const periodOptions: PeriodOption[] = Array.from(periodSet)
     .sort()
-    .map((p) => ({ code: p, status: "OPEN" as const }));
+    .map((p) => ({ code: p, status: periodsMap.get(p) ?? "OPEN" }));
 
   // Filter and sort lines
   const filteredLines = account.recent_lines.filter((l) => {

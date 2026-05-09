@@ -51,8 +51,12 @@ export const periodRoutes = new Elysia({ prefix: '/periods' })
     const checklist = await closeChecklist(params.code);
     return { success: true as const, data: checklist };
   })
-  // POST /periods/:code/close
+  // POST /periods/:code/close (admin and accountant only — audit finding T-12.1)
   .post('/:code/close', async ({ params, body, user, set }) => {
+    if (!['ADMIN', 'ACCOUNTANT'].includes(user.role)) {
+      throw new BusinessRuleError('FORBIDDEN');
+    }
+
     const parsed = ClosePeriodBody.safeParse(body);
     if (!parsed.success) {
       throw new BusinessRuleError('VALIDATION_ERROR', { issues: parsed.error.issues });

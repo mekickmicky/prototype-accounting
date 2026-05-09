@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
 import { authRoutes } from "./routes/auth";
 import { accountRoutes } from "./routes/accounts";
 import { journalEntryRoutes } from "./routes/journal-entries";
@@ -20,6 +21,7 @@ import { errorHandler } from "./middleware/error-handler";
 const PORT = Number(process.env.PORT ?? 3001);
 
 const app = new Elysia()
+  .use(cors({ origin: process.env.CORS_ORIGIN ?? "http://localhost:3000", credentials: true }))
   .use(errorHandler)
   .get("/", () => ({ ok: true, service: "wind-accounting-api" }))
   .get("/health", () => ({ status: "healthy", ts: new Date().toISOString() }))

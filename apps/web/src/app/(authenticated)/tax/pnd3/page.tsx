@@ -6,6 +6,7 @@ import { Plus, Loader2 } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { format } from "date-fns";
+import Decimal from "decimal.js";
 
 interface TaxFiling {
   id: string;
@@ -33,8 +34,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
 
 function fmtMoney(val: string | number | null): string {
   if (val === null || val === undefined) return "—";
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtPeriod(code: string): string {

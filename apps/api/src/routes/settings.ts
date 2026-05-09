@@ -44,7 +44,9 @@ export const settingsRoutes = new Elysia({ prefix: '/settings' })
   })
   .get('/integrations/log', async ({ query }) => {
     const source = typeof query.source === 'string' && query.source ? query.source : undefined;
+    const page = Math.max(1, parseInt(typeof query.page === 'string' ? query.page : '1', 10));
     const limit = Math.min(Number(query.limit ?? 50), 200);
+    const skip = (page - 1) * limit;
     const now = new Date();
     const defaultFrom = new Date(now);
     defaultFrom.setDate(defaultFrom.getDate() - 30);
@@ -62,12 +64,14 @@ export const settingsRoutes = new Elysia({ prefix: '/settings' })
       created_at: { gte: from, lte: to },
     };
 
-    const [rows, todayCount, weekCount] = await Promise.all([
+    const [rows, total, todayCount, weekCount] = await Promise.all([
       prisma.webhookProcessed.findMany({
         where,
         orderBy: { created_at: 'desc' },
         take: limit,
+        skip,
       }),
+      prisma.webhookProcessed.count({ where }),
       prisma.webhookProcessed.count({
         where: { created_at: { gte: startOfToday } },
       }),
@@ -81,6 +85,9 @@ export const settingsRoutes = new Elysia({ prefix: '/settings' })
       data: {
         rows,
         stats: { today: todayCount, this_week: weekCount },
+        total,
+        page,
+        limit,
       },
     };
   })

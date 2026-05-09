@@ -358,6 +358,8 @@ export default function PeriodsPage() {
   const [reopenModalCode, setReopenModalCode] = useState<string | null>(null);
 
   const isAdmin = user?.role === "ADMIN";
+  // ADMIN and ACCOUNTANT may close periods; VIEWER may not (audit finding T-12.1)
+  const canClosePeriod = user?.role === "ADMIN" || user?.role === "ACCOUNTANT";
 
   const fetchPeriods = useCallback(async () => {
     try {
@@ -567,9 +569,13 @@ export default function PeriodsPage() {
 
                       {/* Actions */}
                       <td style={{ ...TH.td, textAlign: "right" }}>
-                        {period.status === "OPEN" && (
+                        {period.status === "OPEN" && canClosePeriod && (
                           <button
-                            onClick={() => setCloseModalCode(period.code)}
+                            onClick={() => {
+                              // Guard: short-circuit if role changed between render and click
+                              if (!canClosePeriod) return;
+                              setCloseModalCode(period.code);
+                            }}
                             style={{
                               padding: "4px 12px",
                               fontSize: 11,

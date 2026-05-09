@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import Decimal from "decimal.js";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
@@ -75,8 +76,7 @@ const SELECT_STYLE: React.CSSProperties = {
 };
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -200,7 +200,7 @@ export default function PaymentsPage() {
     {
       id: "withholding",
       header: "WHT",
-      accessorFn: (row) => row.withholding.reduce((s, w) => s + parseFloat(w.wht_amount), 0),
+      accessorFn: (row) => row.withholding.reduce((acc, w) => acc.plus(w.wht_amount), new Decimal(0)).toNumber(),
       cell: ({ getValue }) => {
         const amt = getValue() as number;
         return amt > 0 ? (
@@ -215,7 +215,7 @@ export default function PaymentsPage() {
     {
       id: "net_paid",
       header: "Net Paid",
-      accessorFn: (row) => parseFloat(row.total_amount) - row.withholding.reduce((s, w) => s + parseFloat(w.wht_amount), 0),
+      accessorFn: (row) => new Decimal(row.total_amount).minus(row.withholding.reduce((acc, w) => acc.plus(w.wht_amount), new Decimal(0))).toNumber(),
       cell: ({ getValue }) => (
         <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#6CB278", fontWeight: 500 }}>
           {fmtMoney(getValue() as number)}
@@ -381,21 +381,47 @@ export default function PaymentsPage() {
         {total > PAGE_SIZE && ` · page ${page} of ${totalPages}`}
       </div>
 
-      <div
-        style={{
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          overflow: "hidden",
-          background: "var(--bg-elevated)",
-        }}
-      >
-        <DataTable
-          columns={columns}
-          data={payments}
-          pageSize={PAGE_SIZE}
-          emptyMessage="ไม่พบใบสั่งจ่ายเงิน — กด New Payment เพื่อสร้างใหม่"
-        />
-      </div>
+      {loading && payments.length === 0 ? (
+        <div style={{ borderRadius: 6, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg-elevated)" }}>
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                height: 44,
+                borderBottom: i < 7 ? "1px solid var(--border)" : undefined,
+                padding: "0 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              {[100, 80, 150, 70, 80, 60, 80, 60, 40].map((w, j) => (
+                <div
+                  key={j}
+                  className="animate-pulse"
+                  style={{ height: 10, width: w, borderRadius: 4, background: "var(--border-strong)", opacity: 0.6, flexShrink: 0 }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div
+          style={{
+            borderRadius: 6,
+            border: "1px solid var(--border)",
+            overflow: "hidden",
+            background: "var(--bg-elevated)",
+          }}
+        >
+          <DataTable
+            columns={columns}
+            data={payments}
+            pageSize={PAGE_SIZE}
+            emptyMessage="ไม่พบใบสั่งจ่ายเงิน — กด New Payment เพื่อสร้างใหม่"
+          />
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 12 }}>

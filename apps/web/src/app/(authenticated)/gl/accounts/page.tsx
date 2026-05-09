@@ -88,7 +88,9 @@ export default function AccountsPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<NewAccountForm>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "ADMIN";
 
@@ -109,10 +111,17 @@ export default function AccountsPage() {
 
   const handleUpdate = useCallback(
     async (code: string, patch: { name_th?: string; is_active?: boolean }) => {
-      const updated = await patchAccount(code, patch);
-      setAccounts((prev) =>
-        prev.map((a) => (a.code === code ? { ...a, ...updated } : a))
-      );
+      setUpdateError(null);
+      try {
+        const updated = await patchAccount(code, patch);
+        setAccounts((prev) =>
+          prev.map((a) => (a.code === code ? { ...a, ...updated } : a))
+        );
+      } catch (err) {
+        // Surface error so the inline edit row stays open (not silently swallowed)
+        setUpdateError(err instanceof Error ? err.message : "Update failed");
+        throw err;
+      }
     },
     []
   );
@@ -127,6 +136,7 @@ export default function AccountsPage() {
   const openModal = () => {
     setForm(EMPTY_FORM);
     setFormError(null);
+    setFieldErrors({});
     setShowModal(true);
   };
 
@@ -138,6 +148,22 @@ export default function AccountsPage() {
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    // Client-side field-level validation
+    const newFieldErrors: Record<string, string> = {};
+    if (!form.code.trim()) {
+      newFieldErrors.code = "Account code is required";
+    } else if (!/^\d{4,5}$/.test(form.code.trim())) {
+      newFieldErrors.code = "Code must be 4–5 digits";
+    }
+    if (!form.name_th.trim()) newFieldErrors.name_th = "ชื่อบัญชี (Thai) จำเป็น";
+    if (!form.name_en.trim()) newFieldErrors.name_en = "Account name is required";
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      return;
+    }
+    setFieldErrors({});
+
     setSubmitting(true);
     try {
       const body: Record<string, unknown> = {
@@ -229,6 +255,31 @@ export default function AccountsPage() {
           ) : undefined
         }
       />
+
+      {updateError && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: "8px 12px",
+            background: "rgba(184,92,80,0.1)",
+            border: "1px solid var(--error)",
+            borderRadius: 4,
+            fontSize: 12,
+            color: "var(--error)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>{updateError}</span>
+          <button
+            onClick={() => setUpdateError(null)}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--error)", fontSize: 11, padding: 0 }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div style={{ marginTop: 20 }}>
         <AccountTree
@@ -329,14 +380,17 @@ export default function AccountsPage() {
                   <div>
                     <label style={LABEL_STYLE}>Account Code *</label>
                     <input
-                      required
-                      pattern="\d{4,5}"
-                      title="4–5 digit numeric code"
                       value={form.code}
-                      onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, code: e.target.value }));
+                        setFieldErrors((fe) => { const n = { ...fe }; delete n.code; return n; });
+                      }}
                       placeholder="e.g. 11010"
-                      style={{ ...INPUT_STYLE, fontFamily: "var(--font-mono)" }}
+                      style={{ ...INPUT_STYLE, fontFamily: "var(--font-mono)", borderColor: fieldErrors.code ? "var(--error)" : undefined }}
                     />
+                    {fieldErrors.code && (
+                      <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--error)" }}>{fieldErrors.code}</p>
+                    )}
                   </div>
                   <div>
                     <label style={LABEL_STYLE}>Type *</label>
@@ -360,23 +414,33 @@ export default function AccountsPage() {
                 <div>
                   <label style={LABEL_STYLE}>ชื่อบัญชี (Thai) *</label>
                   <input
-                    required
                     value={form.name_th}
-                    onChange={(e) => setForm((f) => ({ ...f, name_th: e.target.value }))}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, name_th: e.target.value }));
+                      setFieldErrors((fe) => { const n = { ...fe }; delete n.name_th; return n; });
+                    }}
                     placeholder="เงินสด"
-                    style={INPUT_STYLE}
+                    style={{ ...INPUT_STYLE, borderColor: fieldErrors.name_th ? "var(--error)" : undefined }}
                   />
+                  {fieldErrors.name_th && (
+                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--error)" }}>{fieldErrors.name_th}</p>
+                  )}
                 </div>
 
                 <div>
                   <label style={LABEL_STYLE}>Account Name (English) *</label>
                   <input
-                    required
                     value={form.name_en}
-                    onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, name_en: e.target.value }));
+                      setFieldErrors((fe) => { const n = { ...fe }; delete n.name_en; return n; });
+                    }}
                     placeholder="Cash"
-                    style={INPUT_STYLE}
+                    style={{ ...INPUT_STYLE, borderColor: fieldErrors.name_en ? "var(--error)" : undefined }}
                   />
+                  {fieldErrors.name_en && (
+                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--error)" }}>{fieldErrors.name_en}</p>
+                  )}
                 </div>
 
                 <div>

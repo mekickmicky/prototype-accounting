@@ -2,9 +2,10 @@
 
 import React, { useState, useCallback } from "react";
 import { Download, ExternalLink, Loader2, Play } from "lucide-react";
+import Decimal from "decimal.js";
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { apiClient } from "@/lib/api-client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,18 +45,23 @@ function currentPeriodBangkok(): string {
 }
 
 function subtractMonths(code: string, n: number): string {
-  const [y, m] = code.split("-").map(Number);
-  const total = y! * 12 + (m! - 1) - n;
+  const parts = code.split("-");
+  const y = parseInt(parts[0] ?? "", 10);
+  const m = parseInt(parts[1] ?? "", 10);
+  if (isNaN(y) || isNaN(m) || m < 1 || m > 12) {
+    throw new Error(`Invalid period code: ${code}`);
+  }
+  const total = y * 12 + (m - 1) - n;
   const ny = Math.floor(total / 12);
   const nm = (total % 12) + 1;
   return `${ny}-${String(nm).padStart(2, "0")}`;
 }
 
 function fmt(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "—";
-  if (num < 0) return `(${Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const d = new Decimal(value ?? 0);
+  if (d.isZero()) return "—";
+  if (d.isNegative()) return `(${d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  return d.toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const STATUS_BADGE: Record<VatFilingStatus, string> = {
@@ -75,13 +81,7 @@ const POSITION_COLOR: Record<VatPosition, string> = {
 
 async function triggerExport(periodFrom: string, periodTo: string, format: "csv" | "xlsx" | "pdf") {
   const params = new URLSearchParams({ period_from: periodFrom, period_to: periodTo, format });
-  const url = `${API_BASE}/api/v1/reports/vat-summary?${params}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: { message?: string } })?.error?.message ?? `Export failed: ${res.status}`);
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/vat-summary?${params}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `vat-summary-${periodFrom}_${periodTo}.${format}`;
@@ -114,15 +114,15 @@ function PeriodRow({ row }: { row: VatSummaryRow }) {
       </td>
       <td className="py-2.5 px-3 text-gray-300 text-xs">
         {filedHref ? (
-          <a href={filedHref} className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline underline-offset-2">
+          <Link href={filedHref} className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline underline-offset-2">
             {row.filing_no}
             <ExternalLink className="w-3 h-3" />
-          </a>
+          </Link>
         ) : row.status === "UNFILED" || row.status === "DRAFT" ? (
-          <a href={pp30Href} className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 text-xs">
+          <Link href={pp30Href} className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 text-xs">
             Generate ภพ.30
             <ExternalLink className="w-3 h-3" />
-          </a>
+          </Link>
         ) : (
           "—"
         )}
@@ -147,11 +147,8 @@ export default function VatSummaryPage() {
     setError(null);
     try {
       const params = new URLSearchParams({ period_from: periodFrom, period_to: periodTo, format: "json" });
-      const url = `${API_BASE}/api/v1/reports/vat-summary?${params}`;
-      const res = await fetch(url, { credentials: "include" });
-      const body = await res.json();
-      if (!res.ok) throw new Error((body as { error?: { message?: string } })?.error?.message ?? "Failed to load");
-      setResult((body as { data: VatSummaryResult }).data);
+      const data = await apiClient.get<VatSummaryResult>(`/api/v1/reports/vat-summary?${params}`);
+      setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

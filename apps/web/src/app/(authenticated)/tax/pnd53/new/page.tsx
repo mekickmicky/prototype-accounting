@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft, Eye, Save } from "lucide-react";
+import Decimal from "decimal.js";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
@@ -49,8 +50,7 @@ interface TaxFiling {
 }
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -59,7 +59,7 @@ function fmtDate(iso: string): string {
 }
 
 function fmtPct(rate: string): string {
-  return `${(parseFloat(rate) * 100).toFixed(0)}%`;
+  return `${new Decimal(rate).times(100).toFixed(0)}%`;
 }
 
 const TH: React.CSSProperties = {
@@ -91,9 +91,14 @@ export default function NewPND53Page() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   async function handlePreview() {
-    if (!period) return;
+    if (!period) {
+      setFieldErrors({ period: "Period is required" });
+      return;
+    }
+    setFieldErrors({});
     setPreviewing(true);
     setPreviewError(null);
     setAggregate(null);
@@ -171,26 +176,32 @@ export default function NewPND53Page() {
         <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, minWidth: 80 }}>
           Period (งวด)
         </label>
-        <input
-          type="month"
-          value={period}
-          onChange={(e) => {
-            setPeriod(e.target.value);
-            setAggregate(null);
-            setPreviewError(null);
-          }}
-          style={{
-            height: 32,
-            padding: "0 10px",
-            fontSize: 13,
-            borderRadius: 4,
-            border: "1px solid var(--border-strong)",
-            background: "var(--surface)",
-            color: "var(--text-primary)",
-            fontFamily: "inherit",
-            outline: "none",
-          }}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <input
+            type="month"
+            value={period}
+            onChange={(e) => {
+              setPeriod(e.target.value);
+              setAggregate(null);
+              setPreviewError(null);
+              if (e.target.value) setFieldErrors((prev) => ({ ...prev, period: "" }));
+            }}
+            style={{
+              height: 32,
+              padding: "0 10px",
+              fontSize: 13,
+              borderRadius: 4,
+              border: fieldErrors.period ? "1px solid var(--error)" : "1px solid var(--border-strong)",
+              background: "var(--surface)",
+              color: "var(--text-primary)",
+              fontFamily: "inherit",
+              outline: "none",
+            }}
+          />
+          {fieldErrors.period && (
+            <span style={{ fontSize: 11, color: "var(--error)" }}>{fieldErrors.period}</span>
+          )}
+        </div>
         <button
           onClick={handlePreview}
           disabled={!period || previewing}
@@ -358,7 +369,7 @@ export default function NewPND53Page() {
             </div>
             {[
               { label: "จำนวนผู้รับเงิน · Recipients", val: aggregate!.recipient_count, isMoney: false },
-              { label: "ยอดรวมก่อนหัก · Total Gross Amount", val: parseFloat(aggregate!.total_gross), isMoney: true },
+              { label: "ยอดรวมก่อนหัก · Total Gross Amount", val: aggregate!.total_gross, isMoney: true },
             ].map(({ label, val, isMoney }, i) => (
               <div
                 key={i}
@@ -366,7 +377,7 @@ export default function NewPND53Page() {
               >
                 <span style={{ color: "var(--text-primary)" }}>{label}</span>
                 <span style={{ fontFamily: "var(--font-mono)", textAlign: "right" }}>
-                  {isMoney ? fmtMoney((val as number).toFixed(2)) : val}
+                  {isMoney ? fmtMoney(val as string) : val}
                 </span>
               </div>
             ))}

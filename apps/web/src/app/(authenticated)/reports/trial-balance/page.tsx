@@ -4,11 +4,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Download, AlertCircle, CheckCircle2, Loader2, Play } from "lucide-react";
 
+import Decimal from "decimal.js";
+import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { BranchPicker } from "@/components/ui/branch-picker";
 import { DatePickerTH } from "@/components/ui/date-picker-th";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,21 +58,24 @@ function getTodayBangkok(): string {
 }
 
 function formatMoney(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num)) return "—";
-  if (num === 0) return "—";
-  if (num < 0) {
-    return `(${Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  try {
+    const d = new Decimal(value ?? 0);
+    if (d.isZero()) return "—";
+    if (d.isNegative()) {
+      return `(${d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+    }
+    return d.toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } catch {
+    return "—";
   }
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function isZero(value: string): boolean {
-  return parseFloat(value) === 0;
+  try { return new Decimal(value).isZero(); } catch { return true; }
 }
 
 function isNeg(value: string): boolean {
-  return parseFloat(value) < 0;
+  try { return new Decimal(value).isNegative(); } catch { return false; }
 }
 
 const TYPE_ORDER: AccountType[] = ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"];
@@ -88,18 +91,13 @@ const TYPE_LABELS: Record<AccountType, { en: string; th: string }> = {
 // ── Export helper ─────────────────────────────────────────────────────────────
 
 async function triggerExport(asOf: string, branch: string, format: "csv" | "xlsx" | "pdf") {
-  const url = `${API_BASE}/api/v1/reports/trial-balance?as_of=${asOf}&branch=${branch}&format=${format}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body?.error?.message ?? `Export failed: ${res.status}`);
-  }
-  const blob = await res.blob();
-  const ext = format;
+  const blob = await apiClient.getBlob(
+    `/api/v1/reports/trial-balance?as_of=${asOf}&branch=${branch}&format=${format}`
+  );
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = objectUrl;
-  a.download = `trial-balance-${asOf}.${ext}`;
+  a.download = `trial-balance-${asOf}.${format}`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -124,11 +122,10 @@ export default function TrialBalancePage() {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_BASE}/api/v1/reports/trial-balance?as_of=${date}&branch=${br}&format=json`;
-      const res = await fetch(url, { credentials: "include" });
-      const body = await res.json();
-      if (!body.success) throw new Error(body.error?.message ?? "Failed to load report");
-      setResult(body.data as TrialBalanceResult);
+      const data = await apiClient.get<TrialBalanceResult>(
+        `/api/v1/reports/trial-balance?as_of=${date}&branch=${br}&format=json`
+      );
+      setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load report");
     } finally {
@@ -138,7 +135,7 @@ export default function TrialBalancePage() {
 
   useEffect(() => {
     fetchReport(asOf, branch);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchReport]);
 
   const handleRun = () => {
     if (asOf) fetchReport(asOf, branch);

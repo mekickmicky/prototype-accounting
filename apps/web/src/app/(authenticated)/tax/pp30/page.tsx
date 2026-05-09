@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Loader2 } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
 import { format } from "date-fns";
 
@@ -34,8 +35,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
 
 function fmtMoney(val: string | number | null): string {
   if (val === null || val === undefined) return "—";
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtPeriod(code: string): string {
@@ -169,6 +169,15 @@ export default function PP30ListPage() {
             </tr>
           </thead>
           <tbody>
+            {loading && Array.from({ length: 5 }).map((_, i) => (
+              <tr key={`skel-${i}`}>
+                {[120, 140, 70, 90, 90, 90, 80].map((w, j) => (
+                  <td key={j} style={{ ...TD }}>
+                    <div className="animate-pulse" style={{ height: 12, width: w, borderRadius: 3, background: "var(--surface)" }} />
+                  </td>
+                ))}
+              </tr>
+            ))}
             {!loading && filings.length === 0 && (
               <tr>
                 <td
@@ -184,7 +193,7 @@ export default function PP30ListPage() {
                 </td>
               </tr>
             )}
-            {filings.map((f) => {
+            {!loading && filings.map((f) => {
               const s = STATUS_STYLES[f.status] ?? STATUS_STYLES["DRAFT"]!;
               return (
                 <tr key={f.id} style={{ cursor: "pointer" }}>

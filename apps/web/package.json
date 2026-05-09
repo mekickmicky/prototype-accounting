@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
+    "decimal.js": "^10.4.3",
     "@wind-acc/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "date-fns": "^4.1.0",

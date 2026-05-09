@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, Suspense } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import Decimal from "decimal.js";
+import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   ReportFilterBar,
   type ReportFilterParams,
 } from "@/components/reports/filter-bar";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,19 +52,27 @@ interface CFResult {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "—";
-  const abs = Math.abs(num).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return num < 0 ? `(${abs})` : abs;
+  try {
+    const d = new Decimal(value ?? 0);
+    if (d.isZero()) return "—";
+    const abs = d.abs().toNumber().toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return d.isNegative() ? `(${abs})` : abs;
+  } catch {
+    return "—";
+  }
 }
 
 function amountColor(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "text-gray-500";
-  return num < 0 ? "text-red-400" : "text-white";
+  try {
+    const d = new Decimal(value ?? 0);
+    if (d.isZero()) return "text-gray-500";
+    return d.isNegative() ? "text-red-400" : "text-white";
+  } catch {
+    return "text-gray-500";
+  }
 }
 
 async function triggerExport(
@@ -79,16 +87,7 @@ async function triggerExport(
     branch,
     format,
   });
-  const url = `${API_BASE}/api/v1/reports/cash-flow?${params}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { error?: { message?: string } })?.error?.message ??
-        `Export failed: ${res.status}`
-    );
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/cash-flow?${params}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `cash-flow-${periodFrom}_${periodTo}-${branch}.${format}`;
@@ -195,8 +194,11 @@ function SpacerRow() {
 // ── CashBox ───────────────────────────────────────────────────────────────────
 
 function CashBox({ label, value }: { label: string; value: string }) {
-  const num = parseFloat(value);
-  const color = isNaN(num) || num === 0 ? "text-gray-400" : num < 0 ? "text-red-400" : "text-emerald-400";
+  let color = "text-gray-400";
+  try {
+    const d = new Decimal(value ?? 0);
+    if (!d.isZero()) color = d.isNegative() ? "text-red-400" : "text-emerald-400";
+  } catch {}
   return (
     <div className="flex-1 min-w-[160px] rounded-lg border border-gray-700 bg-gray-900 px-5 py-4 text-center">
       <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">{label}</div>
@@ -207,7 +209,7 @@ function CashBox({ label, value }: { label: string; value: string }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function CashFlowPage() {
+function CashFlowPageInner() {
   const [result, setResult] = useState<CFResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -225,16 +227,8 @@ export default function CashFlowPage() {
         branch: params.branch,
         format: "json",
       });
-      const res = await fetch(`${API_BASE}/api/v1/reports/cash-flow?${qs}`, {
-        credentials: "include",
-      });
-      const body = await res.json();
-      if (!res.ok)
-        throw new Error(
-          (body as { error?: { message?: string } })?.error?.message ??
-            "Failed to load"
-        );
-      setResult((body as { data: CFResult }).data);
+      const data = await apiClient.get<CFResult>(`/api/v1/reports/cash-flow?${qs}`);
+      setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -278,6 +272,18 @@ export default function CashFlowPage() {
       {error && (
         <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-400 text-sm">
           {error}
+        </div>
+      )}
+
+      {loading && !result && (
+        <div className="rounded-lg border border-gray-800 overflow-hidden animate-pulse">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex gap-4 px-4 py-3 border-b border-gray-800">
+              <div className="h-4 w-16 bg-gray-800 rounded" />
+              <div className="h-4 flex-1 bg-gray-800 rounded" />
+              <div className="h-4 w-28 bg-gray-700 rounded" />
+            </div>
+          ))}
         </div>
       )}
 
@@ -451,5 +457,13 @@ export default function CashFlowPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function CashFlowPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-400">Loading…</div>}>
+      <CashFlowPageInner />
+    </Suspense>
   );
 }

@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import Decimal from "decimal.js";
+import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReportFilterBar, ExportButtons } from "@/components/reports/filter-bar";
 import type { ReportFilterParams } from "@/components/reports/filter-bar";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,12 +50,16 @@ function todayBangkok(): string {
 
 function formatMoney(value: string | undefined | null): string {
   if (!value) return "—";
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "—";
-  if (num < 0) {
-    return `(${Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  try {
+    const d = new Decimal(value);
+    if (d.isZero()) return "—";
+    if (d.isNegative()) {
+      return `(${d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+    }
+    return d.toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } catch {
+    return "—";
   }
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatDate(iso: string): string {
@@ -65,32 +69,33 @@ function formatDate(iso: string): string {
 
 function pctColor(pct: string | undefined): string {
   if (!pct) return "text-gray-500";
-  const n = parseFloat(pct);
-  if (isNaN(n) || n === 0) return "text-gray-500";
-  return n > 0 ? "text-emerald-400" : "text-red-400";
+  try {
+    const n = new Decimal(pct);
+    if (n.isZero()) return "text-gray-500";
+    return n.gt(0) ? "text-emerald-400" : "text-red-400";
+  } catch {
+    return "text-gray-500";
+  }
 }
 
 function PctBadge({ pct }: { pct?: string }) {
   if (!pct) return <span className="tabular-nums text-gray-500 font-mono text-xs">—</span>;
-  const n = parseFloat(pct);
-  if (isNaN(n)) return <span className="tabular-nums text-gray-500 font-mono text-xs">—</span>;
-  const sign = n > 0 ? "+" : "";
-  return (
-    <span className={`tabular-nums font-mono text-xs ${pctColor(pct)}`}>
-      {sign}{n.toFixed(1)}%
-    </span>
-  );
+  try {
+    const n = new Decimal(pct);
+    const sign = n.gt(0) ? "+" : "";
+    return (
+      <span className={`tabular-nums font-mono text-xs ${pctColor(pct)}`}>
+        {sign}{n.toNumber().toFixed(1)}%
+      </span>
+    );
+  } catch {
+    return <span className="tabular-nums text-gray-500 font-mono text-xs">—</span>;
+  }
 }
 
 async function triggerExport(asOf: string, branch: string, format: "csv" | "xlsx" | "pdf", comparative: boolean) {
   const params = new URLSearchParams({ as_of: asOf, branch, format, comparative: comparative ? "true" : "false" });
-  const url = `${API_BASE}/api/v1/reports/balance-sheet?${params}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: { message?: string } })?.error?.message ?? `Export failed: ${res.status}`);
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/balance-sheet?${params}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `balance-sheet-${asOf}-${branch}.${format}`;
@@ -277,7 +282,7 @@ function BalanceBanner({ result, hasComparative }: { result: BSResult; hasCompar
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function BalanceSheetPage() {
+function BalanceSheetPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -300,10 +305,8 @@ export default function BalanceSheetPage() {
         comparative: params.comparative ? "true" : "false",
         format: "json",
       });
-      const res = await fetch(`${API_BASE}/api/v1/reports/balance-sheet?${qp}`, { credentials: "include" });
-      const body = await res.json();
-      if (!res.ok) throw new Error((body as { error?: { message?: string } })?.error?.message ?? "Failed to load");
-      setResult((body as { data: BSResult }).data);
+      const data = await apiClient.get<BSResult>(`/api/v1/reports/balance-sheet?${qp}`);
+      setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -341,8 +344,13 @@ export default function BalanceSheetPage() {
   const drillToGL = useCallback(
     (code: string) => {
       if (!lastParams) return;
-      const year = lastParams.asOf.substring(0, 4);
-      const month = lastParams.asOf.substring(5, 7);
+      const d = new Date(lastParams.asOf);
+      if (isNaN(d.getTime())) {
+        setError(`Invalid date: ${lastParams.asOf}`);
+        return;
+      }
+      const year = String(d.getUTCFullYear());
+      const month = String(d.getUTCMonth() + 1).padStart(2, "0");
       const period = `${year}-${month}`;
       const params = new URLSearchParams({
         account: code,
@@ -381,6 +389,18 @@ export default function BalanceSheetPage() {
         <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-400 text-sm flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           {error}
+        </div>
+      )}
+
+      {loading && !result && (
+        <div className="rounded-lg border border-gray-800 overflow-hidden animate-pulse">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="flex gap-4 px-4 py-3 border-b border-gray-800">
+              <div className="h-4 w-16 bg-gray-800 rounded" />
+              <div className="h-4 flex-1 bg-gray-800 rounded" />
+              <div className="h-4 w-32 bg-gray-700 rounded" />
+            </div>
+          ))}
         </div>
       )}
 
@@ -567,5 +587,13 @@ export default function BalanceSheetPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BalanceSheetPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-400">Loading…</div>}>
+      <BalanceSheetPageInner />
+    </Suspense>
   );
 }

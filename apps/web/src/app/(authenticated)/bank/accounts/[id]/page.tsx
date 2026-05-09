@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Upload, GitMerge, ChevronLeft, ChevronRight } from "lucide-react";
-import { ApiError } from "@/lib/api-client";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import Decimal from "decimal.js";
+import { apiClient, ApiError } from "@/lib/api-client";
 
 interface BankAccount {
   id: string;
@@ -39,24 +38,6 @@ interface TxnMeta {
   page_size: number;
 }
 
-async function apiReq<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...init.headers },
-  });
-  let body: { success: boolean; data?: T; meta?: unknown; error?: { code: string; message: string } };
-  try {
-    body = await res.json();
-  } catch {
-    throw new ApiError("PARSE_ERROR", "Failed to parse response", res.status);
-  }
-  if (!body.success) {
-    throw new ApiError(body.error?.code ?? "UNKNOWN", body.error?.message ?? "Unknown error", res.status);
-  }
-  return body as T;
-}
-
 function maskAccountNo(no: string | null): string {
   if (!no) return "—";
   if (no.length <= 4) return no;
@@ -64,8 +45,7 @@ function maskAccountNo(no: string | null): string {
 }
 
 function fmtMoney(val: string): string {
-  const n = parseFloat(val);
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -116,8 +96,8 @@ export default function BankAccountDetailPage() {
     setLoadingAccount(true);
     setAccountError(null);
     try {
-      const result = await apiReq<{ success: boolean; data: BankAccount }>(`/api/v1/bank-accounts/${id}`);
-      setAccount(result.data);
+      const account = await apiClient.get<BankAccount>(`/api/v1/bank-accounts/${id}`);
+      setAccount(account);
     } catch (err) {
       setAccountError(err instanceof ApiError ? err.message : "Failed to load account");
     } finally {
@@ -132,7 +112,7 @@ export default function BankAccountDetailPage() {
       const qs = new URLSearchParams({ page: String(p), page_size: String(PAGE_SIZE) });
       if (filter === "reconciled") qs.set("reconciled", "true");
       if (filter === "unreconciled") qs.set("reconciled", "false");
-      const result = await apiReq<{ success: boolean; data: BankTransaction[]; meta: TxnMeta }>(
+      const result = await apiClient.getPaged<BankTransaction[], TxnMeta>(
         `/api/v1/bank-accounts/${id}/transactions?${qs}`,
       );
       setTransactions(result.data ?? []);
@@ -200,7 +180,7 @@ export default function BankAccountDetailPage() {
     );
   }
 
-  const balance = parseFloat(account.balance);
+  const balance = new Decimal(account.balance ?? "0");
 
   return (
     <div style={{ maxWidth: 1000 }}>
@@ -357,7 +337,7 @@ export default function BankAccountDetailPage() {
         <div
           style={{
             background: "var(--bg-elevated)",
-            border: `1px solid ${balance < 0 ? "var(--error)" : "var(--border)"}`,
+            border: `1px solid ${balance.lt(0) ? "var(--error)" : "var(--border)"}`,
             borderRadius: 6,
             padding: "16px 20px",
           }}
@@ -379,7 +359,7 @@ export default function BankAccountDetailPage() {
               fontSize: 28,
               fontFamily: "var(--font-mono)",
               fontWeight: 600,
-              color: balance < 0 ? "var(--error)" : "var(--text-primary)",
+              color: balance.lt(0) ? "var(--error)" : "var(--text-primary)",
               lineHeight: 1,
               marginBottom: 4,
             }}
@@ -504,8 +484,8 @@ export default function BankAccountDetailPage() {
               </tr>
             )}
             {transactions.map((txn, i) => {
-              const debit = parseFloat(txn.debit);
-              const credit = parseFloat(txn.credit);
+              const debit = new Decimal(txn.debit ?? "0");
+              const credit = new Decimal(txn.credit ?? "0");
               const isReconciled = !!txn.reconciled_at;
               return (
                 <tr
@@ -538,20 +518,20 @@ export default function BankAccountDetailPage() {
                       padding: "8px 12px",
                       textAlign: "right",
                       fontFamily: "var(--font-mono)",
-                      color: debit > 0 ? "var(--error)" : "var(--text-dim)",
+                      color: debit.gt(0) ? "var(--error)" : "var(--text-dim)",
                     }}
                   >
-                    {debit > 0 ? fmtMoney(txn.debit) : "—"}
+                    {debit.gt(0) ? fmtMoney(txn.debit) : "—"}
                   </td>
                   <td
                     style={{
                       padding: "8px 12px",
                       textAlign: "right",
                       fontFamily: "var(--font-mono)",
-                      color: credit > 0 ? "#6CB278" : "var(--text-dim)",
+                      color: credit.gt(0) ? "#6CB278" : "var(--text-dim)",
                     }}
                   >
-                    {credit > 0 ? fmtMoney(txn.credit) : "—"}
+                    {credit.gt(0) ? fmtMoney(txn.credit) : "—"}
                   </td>
                   <td
                     style={{

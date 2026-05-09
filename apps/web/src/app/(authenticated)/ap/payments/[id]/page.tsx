@@ -3,6 +3,8 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft, FileText, Download } from "lucide-react";
+import Link from "next/link";
+import Decimal from "decimal.js";
 import { ApiError } from "@/lib/api-client";
 import { format } from "date-fns";
 
@@ -72,8 +74,7 @@ async function apiReq<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -225,15 +226,24 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
 
   if (error || !payment) {
     return (
-      <div style={{ padding: "40px 0", fontSize: 13, color: "var(--error)" }}>
-        {error ?? "ไม่พบข้อมูล"}
+      <div style={{ padding: "40px 0" }}>
+        <div style={{ fontSize: 13, color: "var(--error)", marginBottom: 12 }}>
+          {error ?? "ไม่พบข้อมูล"}
+        </div>
+        <Link
+          href="/ap/payments"
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--accent)", textDecoration: "none" }}
+        >
+          <ArrowLeft size={12} />
+          Back to payments
+        </Link>
       </div>
     );
   }
 
   const { bg: statusBg, color: statusColor } = STATUS_COLORS[payment.status] ?? STATUS_COLORS.DRAFT;
-  const totalWht = payment.withholding.reduce((s, w) => s + parseFloat(w.wht_amount), 0);
-  const netPaid = parseFloat(payment.total_amount) - totalWht;
+  const totalWht = payment.withholding.reduce((acc, w) => acc.plus(w.wht_amount), new Decimal(0)).toNumber();
+  const netPaid = new Decimal(payment.total_amount).minus(totalWht).toNumber();
 
   return (
     <div>
@@ -342,7 +352,7 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
                   <tr>
                     <td colSpan={3} style={{ ...TD, fontSize: 11, color: "var(--text-muted)", borderBottom: "none" }}>Total Applied</td>
                     <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 13, borderBottom: "none" }}>
-                      {fmtMoney(payment.applications.reduce((s, a) => s + parseFloat(a.applied_amount), 0))}
+                      {fmtMoney(payment.applications.reduce((acc, a) => acc.plus(a.applied_amount), new Decimal(0)).toNumber())}
                     </td>
                     <td style={{ ...TD, borderBottom: "none" }}></td>
                   </tr>
@@ -413,7 +423,7 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
                         {w.wht_type}
                       </td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)", color: "#C8A03C" }}>
-                        {parseFloat(w.wht_rate)}%
+                        {new Decimal(w.wht_rate).toNumber()}%
                       </td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)" }}>
                         {fmtMoney(w.gross_amount)}

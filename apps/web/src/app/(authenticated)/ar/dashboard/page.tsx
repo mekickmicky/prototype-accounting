@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Loader2, AlertTriangle, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import Decimal from "decimal.js";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -29,8 +30,8 @@ function getTodayBangkok(): string {
   return `${y}-${m}-${day}`;
 }
 
-function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
+function fmtMoney(val: string | number | Decimal): string {
+  const n = new Decimal(val ?? 0).toNumber();
   if (isNaN(n)) return "—";
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -196,7 +197,8 @@ export default function ARDashboardPage() {
         const monthInvoices: SalesInvoice[] = invBody.data ?? [];
         const revenue = monthInvoices
           .filter((inv) => inv.status !== "DRAFT" && inv.status !== "VOID")
-          .reduce((acc, inv) => acc + parseFloat(inv.total), 0);
+          .reduce((acc, inv) => acc.plus(new Decimal(inv.total)), new Decimal(0))
+          .toNumber();
         setMonthRevenue(revenue);
 
         // Overdue count
@@ -207,7 +209,9 @@ export default function ARDashboardPage() {
 
         // This month receipts total
         const receipts: ReceiptItem[] = receiptBody.data ?? [];
-        const totalReceipts = receipts.reduce((acc, r) => acc + parseFloat(r.total_amount), 0);
+        const totalReceipts = receipts
+          .reduce((acc, r) => acc.plus(new Decimal(r.total_amount)), new Decimal(0))
+          .toNumber();
         setMonthReceipts(totalReceipts);
 
         // AR aging
@@ -215,23 +219,22 @@ export default function ARDashboardPage() {
           const aging: AgingResult = agingBody.data;
           setArBalance(aging.totals.total);
 
-          const overdueTotal =
-            parseFloat(aging.totals.b1_30) +
-            parseFloat(aging.totals.b31_60) +
-            parseFloat(aging.totals.b61_90) +
-            parseFloat(aging.totals.b90plus);
+          const overdueTotal = new Decimal(aging.totals.b1_30)
+            .plus(new Decimal(aging.totals.b31_60))
+            .plus(new Decimal(aging.totals.b61_90))
+            .plus(new Decimal(aging.totals.b90plus))
+            .toNumber();
           setOverdueAmount(overdueTotal);
 
           const overdueRows = aging.rows
-            .filter(
-              (r) =>
-                parseFloat(r.b1_30) +
-                  parseFloat(r.b31_60) +
-                  parseFloat(r.b61_90) +
-                  parseFloat(r.b90plus) >
-                0
+            .filter((r) =>
+              new Decimal(r.b1_30)
+                .plus(new Decimal(r.b31_60))
+                .plus(new Decimal(r.b61_90))
+                .plus(new Decimal(r.b90plus))
+                .gt(0)
             )
-            .sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
+            .sort((a, b) => new Decimal(b.total).minus(new Decimal(a.total)).toNumber())
             .slice(0, 5);
           setTopOverdue(overdueRows);
         }
@@ -538,7 +541,7 @@ export default function ARDashboardPage() {
               </thead>
               <tbody>
                 {topOverdue.map((row, idx) => {
-                  const b61plus = parseFloat(row.b61_90) + parseFloat(row.b90plus);
+                  const b61plus = new Decimal(row.b61_90).plus(new Decimal(row.b90plus));
                   return (
                     <tr
                       key={row.customer_id}
@@ -573,10 +576,10 @@ export default function ARDashboardPage() {
                           fontSize: 11,
                           fontFamily: "var(--font-mono)",
                           color:
-                            parseFloat(row.b1_30) > 0 ? "var(--warning)" : "var(--text-dim)",
+                            new Decimal(row.b1_30).gt(0) ? "var(--warning)" : "var(--text-dim)",
                         }}
                       >
-                        {parseFloat(row.b1_30) > 0 ? fmtMoney(row.b1_30) : "—"}
+                        {new Decimal(row.b1_30).gt(0) ? fmtMoney(row.b1_30) : "—"}
                       </td>
                       <td
                         style={{
@@ -585,10 +588,10 @@ export default function ARDashboardPage() {
                           fontSize: 11,
                           fontFamily: "var(--font-mono)",
                           color:
-                            parseFloat(row.b31_60) > 0 ? "var(--error)" : "var(--text-dim)",
+                            new Decimal(row.b31_60).gt(0) ? "var(--error)" : "var(--text-dim)",
                         }}
                       >
-                        {parseFloat(row.b31_60) > 0 ? fmtMoney(row.b31_60) : "—"}
+                        {new Decimal(row.b31_60).gt(0) ? fmtMoney(row.b31_60) : "—"}
                       </td>
                       <td
                         style={{
@@ -596,11 +599,11 @@ export default function ARDashboardPage() {
                           textAlign: "right",
                           fontSize: 11,
                           fontFamily: "var(--font-mono)",
-                          color: b61plus > 0 ? "var(--error)" : "var(--text-dim)",
-                          fontWeight: b61plus > 0 ? 600 : 400,
+                          color: b61plus.gt(0) ? "var(--error)" : "var(--text-dim)",
+                          fontWeight: b61plus.gt(0) ? 600 : 400,
                         }}
                       >
-                        {b61plus > 0 ? fmtMoney(b61plus) : "—"}
+                        {b61plus.gt(0) ? fmtMoney(b61plus) : "—"}
                       </td>
                       <td
                         style={{

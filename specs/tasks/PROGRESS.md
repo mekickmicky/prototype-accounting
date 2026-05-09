@@ -104,4 +104,5 @@ When every task in a phase is `[x]`, run the phase's "Acceptance Criteria → Su
 
 ## Open questions / blockers
 
-(empty — append here when something blocks a task and needs a human decision)
+**T-12.3 sub-item: AP Balance column in `/ap/vendors`**
+The vendor list endpoint (`GET /api/v1/vendors`) does not return outstanding_balance per vendor — that field is only available on `GET /api/v1/vendors/:id`. To show a live AP Balance column in the vendors list, the list endpoint needs to include balance data (add `?include=balance` query param support or always include a balance sub-query in `listVendors`). A TODO comment has been added to the column cell in `apps/web/src/app/(authenticated)/ap/vendors/page.tsx`. No human decision required — this is a backend enhancement task for the list endpoint.

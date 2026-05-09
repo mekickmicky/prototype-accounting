@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Loader2, RefreshCw, Shield, ShieldAlert, Activity } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
@@ -117,14 +117,18 @@ export default function AuditLogPage() {
 
   const limit = 50;
 
+  // Tracks the filters from the last executed load — pagination reuses them without auto-fetching
+  const appliedFiltersRef = useRef({ action: "", from: "", to: "" });
+
   const load = useCallback(async (pg: number) => {
+    const { action, from, to } = appliedFiltersRef.current;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(pg), limit: String(limit) });
-      if (filterAction) params.set("action", filterAction);
-      if (filterFrom) params.set("from", filterFrom);
-      if (filterTo) params.set("to", filterTo);
+      if (action) params.set("action", action);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
       const data = await apiClient.get<AuditLogResponse>(`/api/v1/settings/audit-log?${params}`);
       setRows(data.rows);
       setTotal(data.total);
@@ -134,9 +138,9 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterAction, filterFrom, filterTo]);
+  }, []); // stable — reads appliedFiltersRef, does not depend on filter state
 
-  useEffect(() => { void load(1); }, [load]);
+  useEffect(() => { void load(1); }, [load]); // mount-only; Filter button applies new filters
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -147,15 +151,15 @@ export default function AuditLogPage() {
     <div style={{ padding: "24px 32px", maxWidth: 1100 }}>
       <PageHeader
         title="Audit Log"
-        subtitle="System activity and webhook events"
+        description="System activity and webhook events"
       />
 
       {/* Stats row */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         {[
           { icon: Activity, label: "Total (page)", value: rows.length, color: "var(--text-primary)" },
-          { icon: Shield, label: "Webhooks received", value: webhookCount, color: "#22c55e" },
-          { icon: ShieldAlert, label: "Webhooks rejected", value: rejectedCount, color: "#ef4444" },
+          { icon: Shield, label: "Webhooks received (this page)", value: webhookCount, color: "#22c55e" },
+          { icon: ShieldAlert, label: "Webhooks rejected (this page)", value: rejectedCount, color: "#ef4444" },
         ].map(({ icon: Icon, label, value, color }) => (
           <div key={label} style={{ ...SURFACE, padding: "12px 16px", minWidth: 160, display: "flex", alignItems: "center", gap: 10 }}>
             <Icon size={18} color={color} strokeWidth={1.5} />
@@ -201,7 +205,10 @@ export default function AuditLogPage() {
           }}
         />
         <button
-          onClick={() => void load(1)}
+          onClick={() => {
+            appliedFiltersRef.current = { action: filterAction, from: filterFrom, to: filterTo };
+            void load(1);
+          }}
           style={{
             height: 30, padding: "0 14px", borderRadius: 4, border: "none",
             background: "var(--accent)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
@@ -210,7 +217,13 @@ export default function AuditLogPage() {
           Filter
         </button>
         <button
-          onClick={() => { setFilterAction(""); setFilterFrom(""); setFilterTo(""); }}
+          onClick={() => {
+            setFilterAction("");
+            setFilterFrom("");
+            setFilterTo("");
+            appliedFiltersRef.current = { action: "", from: "", to: "" };
+            void load(1);
+          }}
           style={{
             height: 30, padding: "0 12px", borderRadius: 4,
             border: "1px solid var(--border-strong)", background: "transparent",

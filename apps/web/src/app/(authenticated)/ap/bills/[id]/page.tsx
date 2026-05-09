@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Loader2, ArrowLeft, FileDown, CreditCard, XCircle, X, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+import Decimal from "decimal.js";
 import { BillForm, type BillSubmitValues } from "@/components/ap/bill-form";
 import { ApiError } from "@/lib/api-client";
 
@@ -94,8 +95,7 @@ async function apiReq<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "number" ? val : parseFloat(val);
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -195,7 +195,7 @@ function BillReadOnly({ bill, onRefresh }: { bill: Bill; onRefresh: () => void }
   const isVoid = bill.status === "VOID";
   const canVoid = bill.status === "POSTED" || bill.status === "PARTIAL_PAID";
   const canRecordPayment = bill.status === "POSTED" || bill.status === "PARTIAL_PAID";
-  const balance = parseFloat(bill.total) - parseFloat(bill.paid_amount);
+  const balance = new Decimal(bill.total).minus(bill.paid_amount).toNumber();
   const pdfUrl = `${API_BASE}/api/v1/bills/${bill.id}/pdf`;
 
   async function doVoid() {
@@ -351,17 +351,17 @@ function BillReadOnly({ bill, onRefresh }: { bill: Bill; onRefresh: () => void }
                       <td style={TD}>{l.description}</td>
                       <td style={{ ...TD, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--accent)" }}>{l.expense_account_code}</td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)" }}>
-                        {parseFloat(l.qty).toLocaleString("th-TH", { maximumFractionDigits: 4 })}
+                        {new Decimal(l.qty).toNumber().toLocaleString("en-US", { maximumFractionDigits: 4 })}
                       </td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)" }}>{fmtMoney(l.unit_price)}</td>
                       <td style={{ ...TD, textAlign: "right", color: "var(--text-muted)" }}>
-                        {parseFloat(l.vat_rate) === 7 ? "7%" : parseFloat(l.vat_rate) === 0 ? "0%" : "Exempt"}
+                        {new Decimal(l.vat_rate).eq(7) ? "7%" : new Decimal(l.vat_rate).eq(0) ? "0%" : "Exempt"}
                       </td>
                       <td style={{ ...TD, fontSize: 11, color: "var(--text-muted)" }}>
-                        {parseFloat(l.withholding_rate) > 0 ? (
+                        {new Decimal(l.withholding_rate).gt(0) ? (
                           <span>
                             {l.withholding_type && <span style={{ color: "var(--text-dim)", marginRight: 3 }}>{l.withholding_type}</span>}
-                            {parseFloat(l.withholding_rate)}%
+                            {new Decimal(l.withholding_rate).toNumber()}%
                           </span>
                         ) : "—"}
                       </td>
@@ -388,7 +388,7 @@ function BillReadOnly({ bill, onRefresh }: { bill: Bill; onRefresh: () => void }
                   <span style={{ color: "var(--text-muted)" }}>ยอดรวม</span>
                   <span style={{ fontFamily: "var(--font-mono)" }}>{fmtMoney(bill.total)}</span>
                 </div>
-                {parseFloat(bill.withholding_amount) > 0 && (
+                {new Decimal(bill.withholding_amount).gt(0) && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                     <span style={{ color: "var(--text-dim)" }}>หัก ณ ที่จ่าย (WHT)</span>
                     <span style={{ fontFamily: "var(--font-mono)", color: "#C8A03C" }}>
@@ -400,7 +400,7 @@ function BillReadOnly({ bill, onRefresh }: { bill: Bill; onRefresh: () => void }
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
                   <span>ยอดสุทธิที่ต้องชำระ</span>
                   <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent)" }}>
-                    {fmtMoney(parseFloat(bill.total) - parseFloat(bill.withholding_amount))}
+                    {fmtMoney(new Decimal(bill.total).minus(bill.withholding_amount).toNumber())}
                   </span>
                 </div>
               </div>
@@ -661,7 +661,7 @@ export default function BillDetailPage() {
             expense_account_code: l.expense_account_code,
             qty: l.qty,
             unit_price: l.unit_price,
-            vat_rate: parseFloat(l.vat_rate) === 7 ? "7" : parseFloat(l.vat_rate) === 0 ? "0" : "EXEMPT",
+            vat_rate: new Decimal(l.vat_rate).eq(7) ? "7" : new Decimal(l.vat_rate).eq(0) ? "0" : "EXEMPT",
             withholding_type: (l.withholding_type as "services" | "goods" | "rent" | "transportation" | "professional" | "interest" | "royalties" | "advertising" | "") ?? "",
             withholding_rate: l.withholding_rate,
           })),

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, ArrowLeft, FileDown, CheckCircle2, Send } from "lucide-react";
+import Decimal from "decimal.js";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
@@ -65,8 +66,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
 };
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -83,7 +83,7 @@ function fmtPeriod(code: string): string {
 }
 
 function fmtPct(rate: string): string {
-  return `${(parseFloat(rate) * 100).toFixed(0)}%`;
+  return `${new Decimal(rate).times(100).toFixed(0)}%`;
 }
 
 const TH: React.CSSProperties = {
@@ -148,6 +148,7 @@ export default function PND53DetailPage() {
   const [submissionRef, setSubmissionRef] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -190,7 +191,15 @@ export default function PND53DetailPage() {
   }
 
   async function handleSubmit() {
-    if (!filing || !submissionRef.trim()) return;
+    if (!filing) return;
+    const errs: Record<string, string> = {};
+    if (!submissionRef.trim()) errs.submissionRef = "Reference number is required";
+    if (!submissionDate) errs.submissionDate = "Submission date is required";
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      return;
+    }
+    setFieldErrors({});
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -226,7 +235,7 @@ export default function PND53DetailPage() {
 
   const steps = getSteps(filing.status);
   const s = STATUS_STYLES[filing.status] ?? STATUS_STYLES["DRAFT"]!;
-  const totalWht = parseFloat(filing.withholding_total);
+  const totalWht = new Decimal(filing.withholding_total ?? 0);
 
   const pdfUrl = `/api/v1/tax-filings/${filingId}/pdf`;
   const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -539,7 +548,7 @@ export default function PND53DetailPage() {
       </div>
 
       {/* Closing JE preview (DRAFT / FINALIZED) */}
-      {filing.status !== "SUBMITTED" && totalWht > 0 && (
+      {filing.status !== "SUBMITTED" && totalWht.gt(0) && (
         <div
           style={{
             marginTop: 16,
@@ -650,44 +659,53 @@ export default function PND53DetailPage() {
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "center", maxWidth: 540 }}>
-            <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>Submission Date</label>
-            <input
-              type="date"
-              value={submissionDate}
-              onChange={(e) => setSubmissionDate(e.target.value)}
-              style={{
-                height: 32,
-                padding: "0 10px",
-                fontSize: 12,
-                borderRadius: 4,
-                border: "1px solid var(--border-strong)",
-                background: "var(--surface)",
-                color: "var(--text-primary)",
-                fontFamily: "inherit",
-                outline: "none",
-              }}
-            />
+          <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "start", maxWidth: 540 }}>
+            <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, paddingTop: 8 }}>Submission Date</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <input
+                type="date"
+                value={submissionDate}
+                onChange={(e) => { setSubmissionDate(e.target.value); setFieldErrors((p) => ({ ...p, submissionDate: "" })); }}
+                style={{
+                  height: 32,
+                  padding: "0 10px",
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: fieldErrors.submissionDate ? "1px solid var(--error)" : "1px solid var(--border-strong)",
+                  background: "var(--surface)",
+                  color: "var(--text-primary)",
+                  fontFamily: "inherit",
+                  outline: "none",
+                }}
+              />
+              {fieldErrors.submissionDate && (
+                <span style={{ fontSize: 11, color: "var(--error)" }}>{fieldErrors.submissionDate}</span>
+              )}
+            </div>
             <div />
-            <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>Reference No.</label>
-            <input
-              type="text"
-              value={submissionRef}
-              onChange={(e) => setSubmissionRef(e.target.value)}
-              placeholder="e.g. RD-2026-05-123456"
-              style={{
-                height: 32,
-                padding: "0 10px",
-                fontSize: 12,
-                borderRadius: 4,
-                border: "1px solid var(--border-strong)",
-                background: "var(--surface)",
-                color: "var(--text-primary)",
-                fontFamily: "inherit",
-                outline: "none",
-                gridColumn: "2 / 4",
-              }}
-            />
+            <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, paddingTop: 8 }}>Reference No.</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, gridColumn: "2 / 4" }}>
+              <input
+                type="text"
+                value={submissionRef}
+                onChange={(e) => { setSubmissionRef(e.target.value); setFieldErrors((p) => ({ ...p, submissionRef: "" })); }}
+                placeholder="e.g. RD-2026-05-123456"
+                style={{
+                  height: 32,
+                  padding: "0 10px",
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: fieldErrors.submissionRef ? "1px solid var(--error)" : "1px solid var(--border-strong)",
+                  background: "var(--surface)",
+                  color: "var(--text-primary)",
+                  fontFamily: "inherit",
+                  outline: "none",
+                }}
+              />
+              {fieldErrors.submissionRef && (
+                <span style={{ fontSize: 11, color: "var(--error)" }}>{fieldErrors.submissionRef}</span>
+              )}
+            </div>
           </div>
 
           <div style={{ marginTop: 16 }}>

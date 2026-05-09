@@ -2,42 +2,37 @@
 
 import React, { useState, useCallback } from "react";
 import { Download, Loader2, Play, AlertTriangle } from "lucide-react";
+import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { apiClient } from "@/lib/api-client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface BranchAmounts {
-  tl: string;
-  ek: string;
-  rama9: string;
   total: string;
+  [key: string]: string;
 }
 
 interface BranchPnLRow {
   account_code: string;
   name_th: string;
   name_en: string;
-  tl: string;
-  ek: string;
-  rama9: string;
   total: string;
+  [key: string]: string;
 }
 
 interface BranchPnLSection {
   title_th: string;
   title_en: string;
   rows: BranchPnLRow[];
-  tl: string;
-  ek: string;
-  rama9: string;
   total: string;
+  [key: string]: string | BranchPnLRow[];
 }
 
 interface BranchPnLResult {
   start_date: string;
   end_date: string;
+  branches?: string[];
   revenue: BranchPnLSection;
   cogs: BranchPnLSection;
   gross_profit: BranchAmounts;
@@ -58,35 +53,34 @@ function currentPeriodBangkok(): string {
 }
 
 function subtractMonths(code: string, n: number): string {
-  const [y, m] = code.split("-").map(Number);
-  const total = y! * 12 + (m! - 1) - n;
+  const parts = code.split("-");
+  const y = parseInt(parts[0] ?? "", 10);
+  const m = parseInt(parts[1] ?? "", 10);
+  if (isNaN(y) || isNaN(m) || m < 1 || m > 12) {
+    throw new Error(`Invalid period code: ${code}`);
+  }
+  const total = y * 12 + (m - 1) - n;
   const ny = Math.floor(total / 12);
   const nm = (total % 12) + 1;
   return `${ny}-${String(nm).padStart(2, "0")}`;
 }
 
 function fmt(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "—";
-  const abs = Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return num < 0 ? `(${abs})` : abs;
+  const d = new Decimal(value ?? 0);
+  if (d.isZero()) return "—";
+  const abs = d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return d.isNegative() ? `(${abs})` : abs;
 }
 
 function amountColor(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "text-gray-500";
-  return num < 0 ? "text-red-400" : "text-white";
+  const d = new Decimal(value ?? 0);
+  if (d.isZero()) return "text-gray-500";
+  return d.isNegative() ? "text-red-400" : "text-white";
 }
 
 async function triggerExport(periodFrom: string, periodTo: string, format: "csv" | "xlsx" | "pdf") {
   const params = new URLSearchParams({ period_from: periodFrom, period_to: periodTo, format });
-  const url = `${API_BASE}/api/v1/reports/branch-pnl?${params}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: { message?: string } })?.error?.message ?? `Export failed: ${res.status}`);
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/branch-pnl?${params}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `branch-pnl-${periodFrom}_${periodTo}.${format}`;
@@ -96,7 +90,7 @@ async function triggerExport(periodFrom: string, periodTo: string, format: "csv"
 
 // ── Section component ─────────────────────────────────────────────────────────
 
-function SectionBlock({ section }: { section: BranchPnLSection }) {
+function SectionBlock({ section, branches }: { section: BranchPnLSection; branches: string[] }) {
   return (
     <>
       {/* Section header */}
@@ -104,9 +98,7 @@ function SectionBlock({ section }: { section: BranchPnLSection }) {
         <td colSpan={2} className="py-2 px-3 text-xs font-semibold text-gray-300 uppercase tracking-wide">
           {section.title_en} / {section.title_th}
         </td>
-        <td className="py-2 px-3" />
-        <td className="py-2 px-3" />
-        <td className="py-2 px-3" />
+        {branches.map((b) => <td key={b} className="py-2 px-3" />)}
         <td className="py-2 px-3" />
       </tr>
 
@@ -118,10 +110,17 @@ function SectionBlock({ section }: { section: BranchPnLSection }) {
         >
           <td className="py-2 px-3 font-mono text-gray-400 text-xs">{row.account_code}</td>
           <td className="py-2 px-3 text-gray-300 pl-6">{row.name_en}</td>
-          <td className={`py-2 px-3 text-right tabular-nums text-xs ${amountColor(row.tl)}`}>{fmt(row.tl)}</td>
-          <td className={`py-2 px-3 text-right tabular-nums text-xs ${amountColor(row.ek)}`}>{fmt(row.ek)}</td>
-          <td className={`py-2 px-3 text-right tabular-nums text-xs ${amountColor(row.rama9)}`}>{fmt(row.rama9)}</td>
-          <td className={`py-2 px-3 text-right tabular-nums text-xs font-medium ${amountColor(row.total)}`}>{fmt(row.total)}</td>
+          {branches.map((b) => {
+            const val = (row[b.toLowerCase()] as string) ?? "0";
+            return (
+              <td key={b} className={`py-2 px-3 text-right tabular-nums text-xs ${amountColor(val)}`}>
+                {fmt(val)}
+              </td>
+            );
+          })}
+          <td className={`py-2 px-3 text-right tabular-nums text-xs font-medium ${amountColor(row.total)}`}>
+            {fmt(row.total)}
+          </td>
         </tr>
       ))}
 
@@ -129,10 +128,17 @@ function SectionBlock({ section }: { section: BranchPnLSection }) {
       <tr className="border-t border-gray-600 bg-gray-800/40 text-sm font-semibold">
         <td className="py-2 px-3" />
         <td className="py-2 px-3 text-gray-200 pl-6">Total {section.title_en}</td>
-        <td className={`py-2 px-3 text-right tabular-nums ${amountColor(section.tl)}`}>{fmt(section.tl)}</td>
-        <td className={`py-2 px-3 text-right tabular-nums ${amountColor(section.ek)}`}>{fmt(section.ek)}</td>
-        <td className={`py-2 px-3 text-right tabular-nums ${amountColor(section.rama9)}`}>{fmt(section.rama9)}</td>
-        <td className={`py-2 px-3 text-right tabular-nums font-bold ${amountColor(section.total)}`}>{fmt(section.total)}</td>
+        {branches.map((b) => {
+          const val = (section[b.toLowerCase()] as string) ?? "0";
+          return (
+            <td key={b} className={`py-2 px-3 text-right tabular-nums ${amountColor(val)}`}>
+              {fmt(val)}
+            </td>
+          );
+        })}
+        <td className={`py-2 px-3 text-right tabular-nums font-bold ${amountColor(section.total)}`}>
+          {fmt(section.total)}
+        </td>
       </tr>
     </>
   );
@@ -142,10 +148,12 @@ function DerivedRow({
   label,
   amounts,
   highlight,
+  branches,
 }: {
   label: string;
   amounts: BranchAmounts;
   highlight?: boolean;
+  branches: string[];
 }) {
   const base = highlight
     ? "border-y-2 border-gray-400 bg-gray-800/70 font-bold text-base"
@@ -155,10 +163,17 @@ function DerivedRow({
     <tr className={base}>
       <td className="py-3 px-3" />
       <td className="py-3 px-3 text-white">{label}</td>
-      <td className={`py-3 px-3 text-right tabular-nums ${amountColor(amounts.tl)}`}>{fmt(amounts.tl)}</td>
-      <td className={`py-3 px-3 text-right tabular-nums ${amountColor(amounts.ek)}`}>{fmt(amounts.ek)}</td>
-      <td className={`py-3 px-3 text-right tabular-nums ${amountColor(amounts.rama9)}`}>{fmt(amounts.rama9)}</td>
-      <td className={`py-3 px-3 text-right tabular-nums font-bold ${amountColor(amounts.total)}`}>{fmt(amounts.total)}</td>
+      {branches.map((b) => {
+        const val = (amounts[b.toLowerCase()] as string) ?? "0";
+        return (
+          <td key={b} className={`py-3 px-3 text-right tabular-nums ${amountColor(val)}`}>
+            {fmt(val)}
+          </td>
+        );
+      })}
+      <td className={`py-3 px-3 text-right tabular-nums font-bold ${amountColor(amounts.total)}`}>
+        {fmt(amounts.total)}
+      </td>
     </tr>
   );
 }
@@ -179,11 +194,8 @@ export default function BranchPnLPage() {
     setError(null);
     try {
       const params = new URLSearchParams({ period_from: periodFrom, period_to: periodTo, format: "json" });
-      const url = `${API_BASE}/api/v1/reports/branch-pnl?${params}`;
-      const res = await fetch(url, { credentials: "include" });
-      const body = await res.json();
-      if (!res.ok) throw new Error((body as { error?: { message?: string } })?.error?.message ?? "Failed to load");
-      setResult((body as { data: BranchPnLResult }).data);
+      const data = await apiClient.get<BranchPnLResult>(`/api/v1/reports/branch-pnl?${params}`);
+      setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -201,6 +213,10 @@ export default function BranchPnLPage() {
       setExporting(null);
     }
   }, [periodFrom, periodTo]);
+
+  const branches = result
+    ? [...(result.branches ?? ["EK", "RAMA9", "TL"])].sort()
+    : [];
 
   return (
     <div className="p-6 space-y-6">
@@ -280,23 +296,24 @@ export default function BranchPnLPage() {
                 <tr className="bg-gray-800 text-gray-300 text-xs">
                   <th className="py-2.5 px-3 text-left font-semibold w-24">Code</th>
                   <th className="py-2.5 px-3 text-left font-semibold">Account</th>
-                  <th className="py-2.5 px-3 text-right font-semibold w-32">TL</th>
-                  <th className="py-2.5 px-3 text-right font-semibold w-32">EK</th>
-                  <th className="py-2.5 px-3 text-right font-semibold w-32">RAMA9</th>
+                  {branches.map((b) => (
+                    <th key={b} className="py-2.5 px-3 text-right font-semibold w-32">{b}</th>
+                  ))}
                   <th className="py-2.5 px-3 text-right font-semibold w-36 border-l border-gray-600">Total</th>
                 </tr>
               </thead>
               <tbody>
-                <SectionBlock section={result.revenue} />
-                <SectionBlock section={result.cogs} />
-                <DerivedRow label="GROSS PROFIT / กำไรขั้นต้น" amounts={result.gross_profit} />
-                <SectionBlock section={result.opex} />
-                <DerivedRow label="OPERATING INCOME / กำไรจากการดำเนินงาน" amounts={result.operating_income} />
-                <SectionBlock section={result.other} />
+                <SectionBlock section={result.revenue} branches={branches} />
+                <SectionBlock section={result.cogs} branches={branches} />
+                <DerivedRow label="GROSS PROFIT / กำไรขั้นต้น" amounts={result.gross_profit} branches={branches} />
+                <SectionBlock section={result.opex} branches={branches} />
+                <DerivedRow label="OPERATING INCOME / กำไรจากการดำเนินงาน" amounts={result.operating_income} branches={branches} />
+                <SectionBlock section={result.other} branches={branches} />
                 <DerivedRow
                   label="NET INCOME (BEFORE TAX) / กำไรสุทธิ (ก่อนภาษี)"
                   amounts={result.net_income}
                   highlight
+                  branches={branches}
                 />
               </tbody>
             </table>

@@ -2,9 +2,9 @@
 
 import React, { useState, useCallback } from "react";
 import { Download, Loader2, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
+import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { apiClient } from "@/lib/api-client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,28 +54,23 @@ function todayBangkok(): string {
 }
 
 function fmt(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "—";
-  if (num < 0) return `(${Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const d = new Decimal(value ?? 0);
+  if (d.isZero()) return "—";
+  if (d.isNegative()) return `(${d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  return d.toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtSigned(value: string): { text: string; cls: string } {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return { text: "—", cls: "text-gray-500" };
-  if (num < 0) return { text: `(${Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`, cls: "text-red-400" };
-  return { text: num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), cls: "text-green-400" };
+  const d = new Decimal(value ?? 0);
+  if (d.isZero()) return { text: "—", cls: "text-gray-500" };
+  const formatted = d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (d.isNegative()) return { text: `(${formatted})`, cls: "text-red-400" };
+  return { text: formatted, cls: "text-green-400" };
 }
 
 async function triggerExport(asOf: string, branch: string, format: "csv" | "xlsx" | "pdf") {
   const params = new URLSearchParams({ as_of: asOf, branch, format });
-  const url = `${API_BASE}/api/v1/reports/cash-position?${params}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: { message?: string } })?.error?.message ?? `Export failed: ${res.status}`);
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/cash-position?${params}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `cash-position-${asOf}-${branch}.${format}`;
@@ -129,11 +124,8 @@ export default function CashPositionPage() {
     setError(null);
     try {
       const params = new URLSearchParams({ as_of: asOf, branch, format: "json" });
-      const url = `${API_BASE}/api/v1/reports/cash-position?${params}`;
-      const res = await fetch(url, { credentials: "include" });
-      const body = await res.json();
-      if (!res.ok) throw new Error((body as { error?: { message?: string } })?.error?.message ?? "Failed to load");
-      setResult((body as { data: CashPositionResult }).data);
+      const data = await apiClient.get<CashPositionResult>(`/api/v1/reports/cash-position?${params}`);
+      setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -216,6 +208,25 @@ export default function CashPositionPage() {
       {error && (
         <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-400 text-sm">
           {error}
+        </div>
+      )}
+
+      {/* Skeleton loading */}
+      {loading && !result && (
+        <div className="rounded-lg border border-gray-800 overflow-hidden animate-pulse">
+          <div className="bg-gray-900 px-4 py-2">
+            <div className="h-3 w-40 bg-gray-800 rounded" />
+          </div>
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="h-4 w-16 bg-gray-800 rounded" />
+                <div className="h-4 w-36 bg-gray-800 rounded" />
+                <div className="h-4 w-24 bg-gray-800 rounded" />
+                <div className="h-4 flex-1 bg-gray-800 rounded" />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, AlertCircle, RefreshCw, Activity, Calendar } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -18,6 +18,9 @@ interface WebhookRow {
 interface LogResponse {
   rows: WebhookRow[];
   stats: { today: number; this_week: number };
+  total: number;
+  page: number;
+  limit: number;
 }
 
 const SOURCE_OPTIONS = [
@@ -231,29 +234,34 @@ export default function WebhookDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<LogResponse | null>(null);
+  const [page, setPage] = useState(1);
+  const limit = 50;
 
-  const load = useCallback(async () => {
+  // Tracks filters from the last executed load — pagination and refresh reuse them
+  const appliedRef = useRef({ source, from, to });
+
+  const load = useCallback(async (pg: number) => {
+    const { source: src, from: f, to: t } = appliedRef.current;
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (source) params.set("source", source);
-      if (from) params.set("from", from);
-      if (to) params.set("to", to + "T23:59:59");
+      const params = new URLSearchParams({ page: String(pg), limit: String(limit) });
+      if (src) params.set("source", src);
+      if (f) params.set("from", f);
+      if (t) params.set("to", t + "T23:59:59");
       const result = await apiClient.get<LogResponse>(
-        `/api/v1/settings/integrations/log?${params.toString()}`
+        `/api/v1/settings/integrations/log?${params}`
       );
       setData(result);
+      setPage(pg);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load webhook log");
     } finally {
       setLoading(false);
     }
-  }, [source, from, to]);
+  }, []); // stable — reads appliedRef, does not depend on filter state
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { void load(1); }, [load]); // mount-only; Apply button triggers reloads
 
   return (
     <div style={{ maxWidth: 1100 }}>
@@ -264,7 +272,7 @@ export default function WebhookDashboardPage() {
         actions={
           <button
             type="button"
-            onClick={load}
+            onClick={() => void load(page)}
             disabled={loading}
             style={{
               display: "inline-flex",
@@ -345,6 +353,26 @@ export default function WebhookDashboardPage() {
             onChange={(e) => setTo(e.target.value)}
           />
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            appliedRef.current = { source, from, to };
+            void load(1);
+          }}
+          style={{
+            height: 32,
+            padding: "0 14px",
+            borderRadius: 4,
+            border: "none",
+            background: "var(--accent)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Apply
+        </button>
       </div>
 
       {/* Error */}
@@ -497,10 +525,45 @@ export default function WebhookDashboardPage() {
               borderTop: "1px solid var(--border)",
             }}
           >
-            แสดง {data.rows.length} รายการ
+            แสดง {data.rows.length} จาก {data.total} รายการ
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {data && data.total > limit && (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12, alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
+            Page {page} of {Math.max(1, Math.ceil(data.total / limit))}
+          </span>
+          <button
+            disabled={page <= 1 || loading}
+            onClick={() => void load(page - 1)}
+            style={{
+              height: 28, padding: "0 12px", borderRadius: 4,
+              border: "1px solid var(--border-strong)", background: "transparent",
+              color: "var(--text-muted)", fontSize: 12,
+              cursor: page <= 1 ? "not-allowed" : "pointer",
+              opacity: page <= 1 ? 0.4 : 1,
+            }}
+          >
+            Prev
+          </button>
+          <button
+            disabled={page >= Math.ceil(data.total / limit) || loading}
+            onClick={() => void load(page + 1)}
+            style={{
+              height: 28, padding: "0 12px", borderRadius: 4,
+              border: "1px solid var(--border-strong)", background: "transparent",
+              color: "var(--text-muted)", fontSize: 12,
+              cursor: page >= Math.ceil(data.total / limit) ? "not-allowed" : "pointer",
+              opacity: page >= Math.ceil(data.total / limit) ? 0.4 : 1,
+            }}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

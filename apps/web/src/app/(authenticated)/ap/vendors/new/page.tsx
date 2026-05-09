@@ -78,6 +78,7 @@ export default function NewVendorPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [whtOpen, setWhtOpen] = useState(false);
 
   const [name, setName] = useState("");
@@ -94,6 +95,13 @@ export default function NewVendorPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setErrors({});
+    const fieldErrors: Record<string, string> = {};
+    if (!name.trim()) fieldErrors.name = "Vendor name is required";
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      return;
+    }
     setSubmitting(true);
     try {
       const body: CreateVendorBody = {
@@ -219,11 +227,14 @@ export default function NewVendorPage() {
                 <input
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => { setName(e.target.value); if (errors.name) setErrors((p) => ({ ...p, name: "" })); }}
                   placeholder="Vendor name (English)"
-                  style={INPUT_STYLE}
+                  style={{ ...INPUT_STYLE, borderColor: errors.name ? "var(--error)" : undefined }}
                   autoFocus
                 />
+                {errors.name && (
+                  <div style={{ fontSize: 11, color: "var(--error)", marginTop: 3 }}>{errors.name}</div>
+                )}
               </div>
               <div>
                 <label style={LABEL_STYLE}>ชื่อภาษาไทย</label>
@@ -440,7 +451,7 @@ export default function NewVendorPage() {
             </button>
             <button
               type="submit"
-              disabled={submitting || !name.trim()}
+              disabled={submitting}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -452,9 +463,8 @@ export default function NewVendorPage() {
                 border: "none",
                 background: submitting ? "var(--surface)" : "var(--accent)",
                 color: "#fff",
-                cursor: submitting || !name.trim() ? "not-allowed" : "pointer",
+                cursor: submitting ? "not-allowed" : "pointer",
                 fontFamily: "inherit",
-                opacity: !name.trim() ? 0.5 : 1,
               }}
             >
               {submitting && <Loader2 size={12} className="animate-spin" />}

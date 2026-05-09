@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Loader2, RefreshCw, X, FileText } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import Decimal from "decimal.js";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
@@ -55,8 +56,7 @@ const SELECT_STYLE: React.CSSProperties = {
 };
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -225,9 +225,22 @@ export default function WhtCertsPage() {
     debounceRef.current = setTimeout(() => applyFilters(1), 350);
   }
 
-  function handleFilterChange<T>(setter: (v: T) => void, val: T) {
+  function handleFilterChange(
+    setter: (v: string) => void,
+    val: string,
+    field: "status" | "period" | "dateFrom" | "dateTo"
+  ) {
     setter(val);
-    setTimeout(() => applyFilters(1), 0);
+    setPage(1);
+    // Pass the new value directly to avoid capturing stale state in a closure
+    fetchCerts({
+      q,
+      status: field === "status" ? val : status,
+      period: field === "period" ? val : period,
+      dateFrom: field === "dateFrom" ? val : dateFrom,
+      dateTo: field === "dateTo" ? val : dateTo,
+      page: 1,
+    });
   }
 
   async function handleBulkRegenerate() {
@@ -301,7 +314,7 @@ export default function WhtCertsPage() {
       header: "Rate",
       cell: ({ getValue }) => (
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {parseFloat(getValue() as string).toFixed(0)}%
+          {new Decimal(getValue() as string).times(100).toFixed(0)}%
         </span>
       ),
     },
@@ -430,7 +443,7 @@ export default function WhtCertsPage() {
 
         <select
           value={status}
-          onChange={(e) => handleFilterChange(setStatus, e.target.value)}
+          onChange={(e) => handleFilterChange(setStatus, e.target.value, "status")}
           style={{ ...SELECT_STYLE, width: 120 }}
         >
           <option value="">All statuses</option>
@@ -441,7 +454,7 @@ export default function WhtCertsPage() {
         <input
           type="month"
           value={period}
-          onChange={(e) => handleFilterChange(setPeriod, e.target.value)}
+          onChange={(e) => handleFilterChange(setPeriod, e.target.value, "period")}
           style={{ ...INPUT_STYLE, width: 130 }}
           title="Filter by period"
         />
@@ -449,7 +462,7 @@ export default function WhtCertsPage() {
         <input
           type="date"
           value={dateFrom}
-          onChange={(e) => handleFilterChange(setDateFrom, e.target.value)}
+          onChange={(e) => handleFilterChange(setDateFrom, e.target.value, "dateFrom")}
           style={{ ...INPUT_STYLE, width: 130 }}
           title="Date from"
         />
@@ -457,7 +470,7 @@ export default function WhtCertsPage() {
         <input
           type="date"
           value={dateTo}
-          onChange={(e) => handleFilterChange(setDateTo, e.target.value)}
+          onChange={(e) => handleFilterChange(setDateTo, e.target.value, "dateTo")}
           style={{ ...INPUT_STYLE, width: 130 }}
           title="Date to"
         />

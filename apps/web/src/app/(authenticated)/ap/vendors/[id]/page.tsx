@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Pencil, Trash2, Loader2, X, Check, ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
+import Decimal from "decimal.js";
 import { ApiError } from "@/lib/api-client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -277,8 +278,9 @@ export default function VendorDetailPage() {
     );
   }
 
-  const balance = parseFloat(vendor.open_bills.outstanding_balance);
-  const hasBalance = balance > 0;
+  const balanceD = new Decimal(vendor.open_bills.outstanding_balance);
+  const balance = balanceD.toNumber();
+  const hasBalance = balanceD.gt(0);
 
   return (
     <div style={{ maxWidth: 880 }}>
@@ -803,7 +805,7 @@ export default function VendorDetailPage() {
                 </span>
                 {" "}รายการ ·{" "}
                 <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: hasBalance ? "var(--error)" : "var(--text-primary)" }}>
-                  {parseFloat(vendor.open_bills.outstanding_balance).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {new Decimal(vendor.open_bills.outstanding_balance).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 {" "}บาท
               </div>
@@ -912,7 +914,7 @@ export default function VendorDetailPage() {
                 marginBottom: 4,
               }}
             >
-              {parseFloat(vendor.open_bills.outstanding_balance).toLocaleString("th-TH", {
+              {new Decimal(vendor.open_bills.outstanding_balance).toNumber().toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}

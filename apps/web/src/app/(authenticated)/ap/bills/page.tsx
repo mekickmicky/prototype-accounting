@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, AlertTriangle, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import Decimal from "decimal.js";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
@@ -70,8 +71,7 @@ const INPUT_STYLE: React.CSSProperties = {
 };
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -208,10 +208,10 @@ export default function BillsPage() {
       accessorKey: "withholding_total",
       header: "WHT",
       cell: ({ getValue }) => {
-        const v = parseFloat(getValue() as string);
+        const v = new Decimal(getValue() as string);
         return (
-          <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: v > 0 ? "#C8A03C" : "var(--text-dim)" }}>
-            {v > 0 ? `(${fmtMoney(v)})` : "—"}
+          <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: v.gt(0) ? "#C8A03C" : "var(--text-dim)" }}>
+            {v.gt(0) ? `(${fmtMoney(v.toNumber())})` : "—"}
           </span>
         );
       },
@@ -310,9 +310,35 @@ export default function BillsPage() {
         {total > PAGE_SIZE && ` · page ${page} of ${totalPages}`}
       </div>
 
-      <div style={{ borderRadius: 6, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg-elevated)" }}>
-        <DataTable columns={columns} data={bills} pageSize={PAGE_SIZE} emptyMessage="ไม่พบใบวางบิล — กด New Bill เพื่อสร้างใหม่" />
-      </div>
+      {loading && bills.length === 0 ? (
+        <div style={{ borderRadius: 6, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg-elevated)" }}>
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                height: 44,
+                borderBottom: i < 7 ? "1px solid var(--border)" : undefined,
+                padding: "0 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              {[100, 90, 150, 70, 70, 80, 60, 70, 60, 40].map((w, j) => (
+                <div
+                  key={j}
+                  className="animate-pulse"
+                  style={{ height: 10, width: w, borderRadius: 4, background: "var(--border-strong)", opacity: 0.6, flexShrink: 0 }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ borderRadius: 6, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg-elevated)" }}>
+          <DataTable columns={columns} data={bills} pageSize={PAGE_SIZE} emptyMessage="ไม่พบใบวางบิล — กด New Bill เพื่อสร้างใหม่" />
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 12 }}>

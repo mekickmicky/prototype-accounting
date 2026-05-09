@@ -2,11 +2,11 @@
 
 import React, { useState, useCallback } from "react";
 import { ChevronDown, ChevronRight, Download, Loader2, Play } from "lucide-react";
+import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
 import { BranchPicker } from "@/components/ui/branch-picker";
 import { DatePickerTH } from "@/components/ui/date-picker-th";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { apiClient } from "@/lib/api-client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,25 +63,29 @@ function getTodayBangkok(): string {
 }
 
 function fmt(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "—";
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const d = new Decimal(value ?? 0);
+  if (d.isZero()) return "—";
+  return d.toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function isZero(v: string): boolean {
-  return parseFloat(v) === 0;
+  return new Decimal(v ?? 0).isZero();
+}
+
+function formatDateBangkok(dateStr: string): string {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 // ── Export helper ─────────────────────────────────────────────────────────────
 
 async function triggerExport(asOf: string, branch: string, format: "csv" | "xlsx" | "pdf") {
-  const url = `${API_BASE}/api/v1/reports/ar-aging?as_of=${asOf}&branch=${branch}&format=${format}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body?.error?.message ?? `Export failed: ${res.status}`);
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/ar-aging?as_of=${asOf}&branch=${branch}&format=${format}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `ar-aging-${asOf}.${format}`;
@@ -96,8 +100,8 @@ function InvoiceRow({ inv }: { inv: AgingInvoice }) {
   return (
     <tr className="text-xs text-gray-400 hover:text-gray-200">
       <td className="pl-12 py-1">{inv.invoice_no || "—"}</td>
-      <td className="py-1">{inv.issue_date}</td>
-      <td className={`py-1 ${overdue ? "text-rose-400" : ""}`}>{inv.due_date}</td>
+      <td className="py-1">{formatDateBangkok(inv.issue_date)}</td>
+      <td className={`py-1 ${overdue ? "text-rose-400" : ""}`}>{formatDateBangkok(inv.due_date)}</td>
       <td className={`py-1 text-right ${overdue ? "text-rose-400" : ""}`}>
         {overdue ? `${inv.days_overdue}d` : "—"}
       </td>
@@ -193,11 +197,8 @@ export default function ArAgingPage() {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_BASE}/api/v1/reports/ar-aging?as_of=${asOf}&branch=${branch}&format=json`;
-      const res = await fetch(url, { credentials: "include" });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error?.message ?? "Failed to load");
-      setResult(body.data);
+      const data = await apiClient.get<ArAgingResult>(`/api/v1/reports/ar-aging?as_of=${asOf}&branch=${branch}&format=json`);
+      setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -224,11 +225,11 @@ export default function ArAgingPage() {
       <div className="flex flex-wrap items-end gap-4 bg-gray-900 border border-gray-800 rounded-lg p-4">
         <div className="space-y-1">
           <label className="text-xs text-gray-400">As of Date</label>
-          <DatePickerTH value={asOf} onChange={setAsOf} />
+          <DatePickerTH value={asOf} onChange={(v) => { if (v) setAsOf(v); }} />
         </div>
         <div className="space-y-1">
           <label className="text-xs text-gray-400">Branch</label>
-          <BranchPicker value={branch} onChange={setBranch} includeAll />
+          <BranchPicker value={branch} onChange={setBranch} allowAll />
         </div>
         <button
           onClick={run}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Decimal from "decimal.js";
 import Link from "next/link";
 import { Plus, Loader2, AlertTriangle, CreditCard } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -29,10 +30,8 @@ function getTodayBangkok(): string {
   return `${y}-${m}-${day}`;
 }
 
-function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  if (isNaN(n)) return "—";
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtMoney(val: string | number | null | undefined): string {
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -198,7 +197,8 @@ export default function APDashboardPage() {
         const monthBills: Bill[] = billsBody.data ?? [];
         const expenses = monthBills
           .filter((b) => b.status !== "DRAFT" && b.status !== "VOID")
-          .reduce((acc, b) => acc + parseFloat(b.total), 0);
+          .reduce((acc, b) => acc.plus(b.total), new Decimal(0))
+          .toNumber();
         setMonthExpenses(expenses);
 
         // Overdue count
@@ -209,7 +209,9 @@ export default function APDashboardPage() {
 
         // This month WHT total: sum withholding_total from posted payments
         const payments: Payment[] = paymentsBody.data ?? [];
-        const totalWht = payments.reduce((acc, p) => acc + parseFloat(p.withholding_total ?? "0"), 0);
+        const totalWht = payments
+          .reduce((acc, p) => acc.plus(p.withholding_total ?? "0"), new Decimal(0))
+          .toNumber();
         setMonthWht(totalWht);
 
         // AP aging: balance + overdue amount + top 5 vendors
@@ -217,16 +219,16 @@ export default function APDashboardPage() {
           const aging: ApAgingResult = agingBody.data;
           setApBalance(aging.totals.total);
 
-          const overdueTotal =
-            parseFloat(aging.totals.b1_30) +
-            parseFloat(aging.totals.b31_60) +
-            parseFloat(aging.totals.b61_90) +
-            parseFloat(aging.totals.b90plus);
+          const overdueTotal = new Decimal(aging.totals.b1_30)
+            .plus(aging.totals.b31_60)
+            .plus(aging.totals.b61_90)
+            .plus(aging.totals.b90plus)
+            .toNumber();
           setOverdueAmount(overdueTotal);
 
           const top5 = [...aging.rows]
-            .filter((r) => parseFloat(r.total) > 0)
-            .sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
+            .filter((r) => new Decimal(r.total).gt(0))
+            .sort((a, b) => new Decimal(b.total).minus(a.total).toNumber())
             .slice(0, 5);
           setTopVendors(top5);
         }
@@ -533,8 +535,7 @@ export default function APDashboardPage() {
               </thead>
               <tbody>
                 {topVendors.map((row, idx) => {
-                  const b31plus =
-                    parseFloat(row.b31_60) + parseFloat(row.b61_90) + parseFloat(row.b90plus);
+                  const b31plus = new Decimal(row.b31_60).plus(row.b61_90).plus(row.b90plus).toNumber();
                   return (
                     <tr
                       key={row.vendor_id}
@@ -569,10 +570,10 @@ export default function APDashboardPage() {
                           fontSize: 11,
                           fontFamily: "var(--font-mono)",
                           color:
-                            parseFloat(row.current) > 0 ? "var(--text-primary)" : "var(--text-dim)",
+                            new Decimal(row.current).gt(0) ? "var(--text-primary)" : "var(--text-dim)",
                         }}
                       >
-                        {parseFloat(row.current) > 0 ? fmtMoney(row.current) : "—"}
+                        {new Decimal(row.current).gt(0) ? fmtMoney(row.current) : "—"}
                       </td>
                       <td
                         style={{
@@ -581,10 +582,10 @@ export default function APDashboardPage() {
                           fontSize: 11,
                           fontFamily: "var(--font-mono)",
                           color:
-                            parseFloat(row.b1_30) > 0 ? "var(--warning)" : "var(--text-dim)",
+                            new Decimal(row.b1_30).gt(0) ? "var(--warning)" : "var(--text-dim)",
                         }}
                       >
-                        {parseFloat(row.b1_30) > 0 ? fmtMoney(row.b1_30) : "—"}
+                        {new Decimal(row.b1_30).gt(0) ? fmtMoney(row.b1_30) : "—"}
                       </td>
                       <td
                         style={{

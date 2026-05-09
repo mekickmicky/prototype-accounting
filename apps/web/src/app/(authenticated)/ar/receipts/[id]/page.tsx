@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Loader2, ArrowLeft, FileDown, XCircle, X, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -66,8 +67,8 @@ async function apiReq<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body.data as T;
 }
 
-function fmtMoney(val: string | number): string {
-  const n = typeof val === "number" ? val : parseFloat(val);
+function fmtMoney(val: string | number | Decimal): string {
+  const n = new Decimal(val ?? 0).toNumber();
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -304,8 +305,11 @@ export default function ReceiptDetailPage() {
   const pdfUrl = `${API_BASE}/api/v1/receipts/${id}/pdf`;
 
   const { bg: statusBg, color: statusColor } = STATUS_COLORS[receipt.status];
-  const totalApplied = receipt.applications.reduce((s, a) => s + parseFloat(a.applied_amount), 0);
-  const advance = parseFloat(receipt.total_amount) - totalApplied;
+  const totalApplied = receipt.applications.reduce(
+    (s, a) => s.plus(new Decimal(a.applied_amount)),
+    new Decimal(0)
+  );
+  const advance = new Decimal(receipt.total_amount).minus(totalApplied);
 
   return (
     <div>
@@ -623,7 +627,7 @@ export default function ReceiptDetailPage() {
                         total applied
                       </td>
                     </tr>
-                    {advance > 0.005 && (
+                    {advance.gt(new Decimal("0.005")) && (
                       <tr>
                         <td
                           colSpan={2}
@@ -672,7 +676,7 @@ export default function ReceiptDetailPage() {
                 <span style={{ color: "var(--text-muted)" }}>จัดสรรแล้ว</span>
                 <span style={{ fontFamily: "var(--font-mono)" }}>({fmtMoney(totalApplied)})</span>
               </div>
-              {parseFloat(receipt.card_fee) > 0 && (
+              {new Decimal(receipt.card_fee).gt(0) && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                   <span style={{ color: "var(--text-muted)" }}>ค่าธรรมเนียมบัตร</span>
                   <span style={{ fontFamily: "var(--font-mono)", color: "var(--error)" }}>
@@ -680,7 +684,7 @@ export default function ReceiptDetailPage() {
                   </span>
                 </div>
               )}
-              {advance > 0.005 && (
+              {advance.gt(new Decimal("0.005")) && (
                 <>
                   <div style={{ borderTop: "1px solid var(--border)", margin: "2px 0" }} />
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>

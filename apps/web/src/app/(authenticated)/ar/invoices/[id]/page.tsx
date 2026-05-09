@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft, FileDown, CreditCard, XCircle, X, AlertTriangle } f
 import { format } from "date-fns";
 import { InvoiceForm, type InvoiceSubmitValues } from "@/components/ar/invoice-form";
 import { ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -96,8 +97,8 @@ async function apiReq<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body.data as T;
 }
 
-function fmtMoney(val: string | number): string {
-  const n = typeof val === "number" ? val : parseFloat(val);
+function fmtMoney(val: string | number | Decimal): string {
+  const n = new Decimal(val ?? 0).toNumber();
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -110,8 +111,8 @@ function toDateInput(iso: string): string {
 }
 
 function vatRateForForm(val: string): "7" | "0" | "EXEMPT" {
-  const n = parseFloat(val);
-  if (n >= 7) return "7";
+  const n = new Decimal(val ?? 0);
+  if (n.gte(7)) return "7";
   return "0";
 }
 
@@ -211,7 +212,7 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
   const isVoid = invoice.status === "VOID";
   const canVoid = invoice.status === "POSTED" || invoice.status === "PARTIAL_PAID";
   const canRecordPayment = invoice.status === "POSTED" || invoice.status === "PARTIAL_PAID";
-  const balance = parseFloat(invoice.total) - parseFloat(invoice.paid_amount);
+  const balance = new Decimal(invoice.total).minus(new Decimal(invoice.paid_amount));
   const pdfUrl = `${API_BASE}/api/v1/sales-invoices/${invoice.id}/pdf`;
 
   async function doVoid() {
@@ -489,20 +490,19 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
                       <td style={{ ...TD, textAlign: "right", color: "var(--text-dim)" }}>{l.line_no}</td>
                       <td style={TD}>{l.description}</td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)" }}>
-                        {parseFloat(l.qty).toLocaleString("th-TH", { maximumFractionDigits: 4 })}
+                        {new Decimal(l.qty).toNumber().toLocaleString("th-TH", { maximumFractionDigits: 4 })}
                       </td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)" }}>
                         {fmtMoney(l.unit_price)}
                       </td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
-                        {parseFloat(l.discount) > 0 ? `(${fmtMoney(l.discount)})` : "—"}
+                        {new Decimal(l.discount).gt(0) ? `(${fmtMoney(l.discount)})` : "—"}
                       </td>
                       <td style={{ ...TD, textAlign: "right", color: "var(--text-muted)" }}>
-                        {parseFloat(l.vat_rate) === 7
-                          ? "7%"
-                          : parseFloat(l.vat_rate) === 0
-                          ? "0%"
-                          : `${parseFloat(l.vat_rate)}%`}
+                        {(() => {
+                          const r = new Decimal(l.vat_rate ?? 0);
+                          return r.eq(7) ? "7%" : r.isZero() ? "0%" : `${r.toFixed(0)}%`;
+                        })()}
                       </td>
                       <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)" }}>
                         {fmtMoney(l.line_total)}
@@ -519,10 +519,10 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                   <span style={{ color: "var(--text-muted)" }}>ราคาก่อนส่วนลด</span>
                   <span style={{ fontFamily: "var(--font-mono)" }}>
-                    {fmtMoney(parseFloat(invoice.subtotal) + parseFloat(invoice.discount))}
+                    {fmtMoney(new Decimal(invoice.subtotal).plus(new Decimal(invoice.discount)))}
                   </span>
                 </div>
-                {parseFloat(invoice.discount) > 0 && (
+                {new Decimal(invoice.discount).gt(0) && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                     <span style={{ color: "var(--text-dim)" }}>ส่วนลด</span>
                     <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-dim)" }}>
@@ -541,7 +541,7 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
                   </span>
                   <span style={{ fontFamily: "var(--font-mono)" }}>{fmtMoney(invoice.vat_amount)}</span>
                 </div>
-                {parseFloat(invoice.withholding_amount) > 0 && (
+                {new Decimal(invoice.withholding_amount).gt(0) && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                     <span style={{ color: "var(--text-dim)" }}>หัก ณ ที่จ่าย (WHT)</span>
                     <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-dim)" }}>
@@ -579,13 +579,13 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
               </div>
               <div style={{ borderTop: "1px solid var(--border)", margin: "2px 0" }} />
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
-                <span style={{ color: balance > 0.005 ? "var(--error)" : "var(--text-muted)" }}>
+                <span style={{ color: balance.gt(new Decimal("0.005")) ? "var(--error)" : "var(--text-muted)" }}>
                   คงเหลือ
                 </span>
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",
-                    color: balance > 0.005 ? "var(--error)" : "var(--text-dim)",
+                    color: balance.gt(new Decimal("0.005")) ? "var(--error)" : "var(--text-dim)",
                   }}
                 >
                   {fmtMoney(balance)}

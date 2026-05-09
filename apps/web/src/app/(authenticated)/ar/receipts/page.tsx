@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Search, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { apiClient, ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
 import { format } from "date-fns";
@@ -70,8 +71,8 @@ const SELECT_STYLE: React.CSSProperties = {
   paddingRight: 24,
 };
 
-function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
+function fmtMoney(val: string | number | Decimal): string {
+  const n = new Decimal(val ?? 0).toNumber();
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -79,8 +80,8 @@ function fmtDate(iso: string): string {
   return format(new Date(iso), "dd MMM yyyy");
 }
 
-function sumApplied(receipt: Receipt): number {
-  return receipt.applications.reduce((s, a) => s + parseFloat(a.applied_amount), 0);
+function sumApplied(receipt: Receipt): Decimal {
+  return receipt.applications.reduce((s, a) => s.plus(new Decimal(a.applied_amount)), new Decimal(0));
 }
 
 export default function ReceiptsPage() {
@@ -202,15 +203,14 @@ export default function ReceiptsPage() {
       header: "Applied",
       accessorFn: (row) => sumApplied(row),
       cell: ({ row, getValue }) => {
-        const applied = getValue() as number;
-        const total = parseFloat(row.original.total_amount);
-        const advance = total - applied;
+        const applied = getValue() as Decimal;
+        const advance = new Decimal(row.original.total_amount).minus(applied);
         return (
           <div>
             <div style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#6CB278" }}>
               {fmtMoney(applied)}
             </div>
-            {advance > 0.005 && (
+            {advance.gt(new Decimal("0.005")) && (
               <div style={{ fontSize: 10, color: "var(--text-dim)" }}>+{fmtMoney(advance)} advance</div>
             )}
           </div>

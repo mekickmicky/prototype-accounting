@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Search, AlertTriangle, Loader2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { apiClient, ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
 import { format } from "date-fns";
@@ -75,8 +76,8 @@ const SELECT_STYLE: React.CSSProperties = {
   paddingRight: 24,
 };
 
-function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
+function fmtMoney(val: string | number | Decimal): string {
+  const n = new Decimal(val ?? 0).toNumber();
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -84,8 +85,8 @@ function fmtDate(iso: string): string {
   return format(new Date(iso), "dd MMM yyyy");
 }
 
-function balance(invoice: SalesInvoice): number {
-  return parseFloat(invoice.total) - parseFloat(invoice.paid_amount);
+function balance(invoice: SalesInvoice): Decimal {
+  return new Decimal(invoice.total).minus(new Decimal(invoice.paid_amount));
 }
 
 export default function InvoicesPage() {
@@ -255,14 +256,14 @@ export default function InvoicesPage() {
       header: "Balance",
       accessorFn: (row) => balance(row),
       cell: ({ getValue }) => {
-        const b = getValue() as number;
+        const b = getValue() as Decimal;
         return (
           <span
             style={{
               fontSize: 12,
               fontFamily: "var(--font-mono)",
-              color: b > 0 ? "var(--accent)" : "var(--text-dim)",
-              fontWeight: b > 0 ? 500 : 400,
+              color: b.gt(0) ? "var(--accent)" : "var(--text-dim)",
+              fontWeight: b.gt(0) ? 500 : 400,
             }}
           >
             {fmtMoney(b)}

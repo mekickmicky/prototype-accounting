@@ -167,6 +167,9 @@ export default function VendorsPage() {
     {
       id: "ap_balance",
       header: "AP Balance",
+      // TODO: Show live AP balance per vendor. Requires GET /api/v1/vendors list to include
+      // outstanding_balance in each row (add ?include=balance to list endpoint).
+      // Currently the list endpoint returns only master data; balance is only on GET /vendors/:id.
       cell: () => <span style={{ fontSize: 11, color: "var(--text-dim)" }}>—</span>,
     },
     {

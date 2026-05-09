@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Loader2, AlertTriangle, Clock } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import Decimal from "decimal.js";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -34,9 +35,7 @@ function getPrevPeriodCode(): string {
 
 function fmtMoney(val: string | number | null | undefined): string {
   if (val === null || val === undefined) return "—";
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  if (isNaN(n)) return "—";
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -243,7 +242,8 @@ export default function TaxDashboardPage() {
         const whtCerts: WhtCertSummary[] = whtBody.data ?? [];
         const totalWht = whtCerts
           .filter((c) => c.status !== "VOID")
-          .reduce((acc, c) => acc + parseFloat(c.wht_amount || "0"), 0);
+          .reduce((acc, c) => acc.plus(new Decimal(c.wht_amount || "0")), new Decimal(0))
+          .toNumber();
         setWhtTotal(totalWht);
 
         // Recent 5 filings
@@ -332,8 +332,8 @@ export default function TaxDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const vatPayableNum = parseFloat(vatPayable);
-  const vatIsRefund = vatPayableNum < 0;
+  const vatPayableDecimal = new Decimal(vatPayable ?? 0);
+  const vatIsRefund = vatPayableDecimal.lt(0);
 
   if (loading) {
     return (
@@ -534,12 +534,12 @@ export default function TaxDashboardPage() {
               fontFamily: "var(--font-mono)",
               fontSize: 22,
               fontWeight: 500,
-              color: vatIsRefund ? "var(--text-credit, #6CB278)" : vatPayableNum > 0 ? "var(--error)" : "var(--text-primary)",
+              color: vatIsRefund ? "var(--text-credit, #6CB278)" : vatPayableDecimal.gt(0) ? "var(--error)" : "var(--text-primary)",
               lineHeight: 1.2,
               marginTop: 4,
             }}
           >
-            {fmtMoney(Math.abs(vatPayableNum))}
+            {fmtMoney(vatPayableDecimal.abs().toNumber())}
           </div>
         </StatCard>
 

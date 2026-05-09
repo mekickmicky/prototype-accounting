@@ -2,13 +2,13 @@
 
 import React, { useState, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
+import Decimal from "decimal.js";
+import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   ReportFilterBar,
   type ReportFilterParams,
 } from "@/components/reports/filter-bar";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,18 +48,22 @@ interface PLResult {
 
 function formatMoney(value: string | undefined | null): string {
   if (!value) return "—";
-  const num = parseFloat(value);
-  if (isNaN(num) || num === 0) return "—";
-  if (num < 0) {
-    return `(${Math.abs(num).toLocaleString("en-US", {
+  try {
+    const d = new Decimal(value);
+    if (d.isZero()) return "—";
+    if (d.isNegative()) {
+      return `(${d.abs().toNumber().toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })})`;
+    }
+    return d.toNumber().toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    })})`;
+    });
+  } catch {
+    return "—";
   }
-  return num.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 function computePctChange(
@@ -67,33 +71,44 @@ function computePctChange(
   cur: string
 ): string | undefined {
   if (!prev) return undefined;
-  const p = parseFloat(prev);
-  const c = parseFloat(cur);
-  if (isNaN(p) || isNaN(c) || p === 0) return undefined;
-  return (((c - p) / Math.abs(p)) * 100).toFixed(2);
+  try {
+    const p = new Decimal(prev);
+    const c = new Decimal(cur);
+    if (p.isZero()) return undefined;
+    return c.minus(p).div(p.abs()).times(100).toFixed(2);
+  } catch {
+    return undefined;
+  }
 }
 
 type SectionType = "revenue" | "expense" | "neutral";
 
 function pctColor(pct: string | undefined, type: SectionType): string {
   if (!pct) return "var(--text-dim)";
-  const n = parseFloat(pct);
-  if (isNaN(n) || n === 0) return "var(--text-dim)";
-  if (type === "revenue") return n > 0 ? "var(--credit)" : "var(--error)";
-  if (type === "expense") return n > 0 ? "var(--error)" : "var(--credit)";
-  return "var(--text-primary)";
+  try {
+    const n = new Decimal(pct);
+    if (n.isZero()) return "var(--text-dim)";
+    if (type === "revenue") return n.gt(0) ? "var(--credit)" : "var(--error)";
+    if (type === "expense") return n.gt(0) ? "var(--error)" : "var(--credit)";
+    return "var(--text-primary)";
+  } catch {
+    return "var(--text-dim)";
+  }
 }
 
 function PctSpan({ pct, type }: { pct: string | undefined; type: SectionType }) {
   if (!pct) return <span style={NUM_STYLE}>—</span>;
-  const n = parseFloat(pct);
-  if (isNaN(n)) return <span style={NUM_STYLE}>—</span>;
-  const sign = n > 0 ? "+" : "";
-  return (
-    <span style={{ ...NUM_STYLE, fontSize: 12, color: pctColor(pct, type) }}>
-      {sign}{n.toFixed(1)}%
-    </span>
-  );
+  try {
+    const n = new Decimal(pct);
+    const sign = n.gt(0) ? "+" : "";
+    return (
+      <span style={{ ...NUM_STYLE, fontSize: 12, color: pctColor(pct, type) }}>
+        {sign}{n.toNumber().toFixed(1)}%
+      </span>
+    );
+  } catch {
+    return <span style={NUM_STYLE}>—</span>;
+  }
 }
 
 async function triggerExport(
@@ -110,17 +125,7 @@ async function triggerExport(
     comparative: String(comparative),
     format,
   });
-  const res = await fetch(`${API_BASE}/api/v1/reports/profit-loss?${params}`, {
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as { error?: { message?: string } })?.error?.message ??
-        `Export failed: ${res.status}`
-    );
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/profit-loss?${params}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `profit-loss-${periodFrom}_${periodTo}-${branch}.${format}`;
@@ -483,17 +488,8 @@ function ProfitLossContent() {
         comparative: String(params.comparative),
         format: "json",
       });
-      const res = await fetch(
-        `${API_BASE}/api/v1/reports/profit-loss?${qs}`,
-        { credentials: "include" }
-      );
-      const body = await res.json();
-      if (!res.ok)
-        throw new Error(
-          (body as { error?: { message?: string } })?.error?.message ??
-            "Failed to load"
-        );
-      setResult((body as { data: PLResult }).data);
+      const data = await apiClient.get<PLResult>(`/api/v1/reports/profit-loss?${qs}`);
+      setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -563,6 +559,18 @@ function ProfitLossContent() {
       {error && (
         <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-400 text-sm">
           {error}
+        </div>
+      )}
+
+      {loading && !result && (
+        <div className="rounded-lg border border-gray-800 overflow-hidden animate-pulse">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex gap-4 px-4 py-3 border-b border-gray-800">
+              <div className="h-4 w-16 bg-gray-800 rounded" />
+              <div className="h-4 flex-1 bg-gray-800 rounded" />
+              <div className="h-4 w-28 bg-gray-700 rounded" />
+            </div>
+          ))}
         </div>
       )}
 

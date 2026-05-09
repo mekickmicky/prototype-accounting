@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Play, Loader2, Download } from "lucide-react";
+import Decimal from "decimal.js";
+import { apiClient } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { AccountPicker, type AccountOption } from "@/components/ui/account-picker";
 import { BranchPicker } from "@/components/ui/branch-picker";
 import { cn } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,8 +50,11 @@ function currentPeriodBangkok(): string {
 }
 
 function subtractMonths(code: string, n: number): string {
-  const [y, m] = code.split("-").map(Number);
-  const total = (y ?? 2000) * 12 + ((m ?? 1) - 1) - n;
+  const parts = code.split("-");
+  const y = parseInt(parts[0] ?? "", 10);
+  const m = parseInt(parts[1] ?? "", 10);
+  if (isNaN(y) || isNaN(m) || m < 1 || m > 12) throw new Error(`Invalid period code: ${code}`);
+  const total = y * 12 + (m - 1) - n;
   const ny = Math.floor(total / 12);
   const nm = (total % 12) + 1;
   return `${ny}-${String(nm).padStart(2, "0")}`;
@@ -59,23 +62,29 @@ function subtractMonths(code: string, n: number): string {
 
 function formatMoney(value: string | undefined | null): string {
   if (!value) return "—";
-  const num = parseFloat(value);
-  if (isNaN(num)) return "—";
-  if (num === 0) return "—";
-  if (num < 0) {
-    return `(${Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  try {
+    const d = new Decimal(value);
+    if (d.isZero()) return "—";
+    if (d.isNegative()) {
+      return `(${d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+    }
+    return d.toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } catch {
+    return "—";
   }
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatMoneyBalance(value: string | undefined | null): string {
   if (!value) return "0.00";
-  const num = parseFloat(value);
-  if (isNaN(num)) return "0.00";
-  if (num < 0) {
-    return `(${Math.abs(num).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  try {
+    const d = new Decimal(value);
+    if (d.isNegative()) {
+      return `(${d.abs().toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+    }
+    return d.toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } catch {
+    return "0.00";
   }
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatDate(iso: string): string {
@@ -104,13 +113,7 @@ async function triggerExport(
   format: "csv" | "xlsx" | "pdf"
 ) {
   const params = new URLSearchParams({ account, period_from: periodFrom, period_to: periodTo, branch, format });
-  const url = `${API_BASE}/api/v1/reports/general-ledger?${params}`;
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: { message?: string } })?.error?.message ?? `Export failed: ${res.status}`);
-  }
-  const blob = await res.blob();
+  const blob = await apiClient.getBlob(`/api/v1/reports/general-ledger?${params}`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `general-ledger-${account}-${periodFrom}_${periodTo}-${branch}.${format}`;
@@ -173,7 +176,7 @@ function ExportButtons({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function GeneralLedgerPage() {
+function GeneralLedgerPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPeriod = currentPeriodBangkok();
@@ -205,10 +208,8 @@ export default function GeneralLedgerPage() {
 
   // Load accounts for picker
   useEffect(() => {
-    fetch(`${API_BASE}/api/v1/accounts?limit=500`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((body: unknown) => {
-        const data = (body as { data?: AccountOption[] })?.data;
+    apiClient.get<AccountOption[]>(`/api/v1/accounts?limit=500`)
+      .then((data) => {
         if (Array.isArray(data)) setAccounts(data);
       })
       .catch(() => {});
@@ -241,16 +242,8 @@ export default function GeneralLedgerPage() {
           branch: br,
           format: "json",
         });
-        const res = await fetch(`${API_BASE}/api/v1/reports/general-ledger?${qp}`, {
-          credentials: "include",
-        });
-        const body = await res.json();
-        if (!res.ok) {
-          throw new Error(
-            (body as { error?: { message?: string } })?.error?.message ?? "Failed to load"
-          );
-        }
-        setResult((body as { data: GLResult }).data);
+        const data = await apiClient.get<GLResult>(`/api/v1/reports/general-ledger?${qp}`);
+        setResult(data);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -459,10 +452,10 @@ export default function GeneralLedgerPage() {
                         )}
                       </td>
                       <td className="py-2 px-4 text-right tabular-nums font-mono text-sm text-emerald-400">
-                        {parseFloat(row.debit) > 0 ? formatMoney(row.debit) : ""}
+                        {new Decimal(row.debit || 0).gt(0) ? formatMoney(row.debit) : ""}
                       </td>
                       <td className="py-2 px-4 text-right tabular-nums font-mono text-sm text-red-400">
-                        {parseFloat(row.credit) > 0 ? formatMoney(row.credit) : ""}
+                        {new Decimal(row.credit || 0).gt(0) ? formatMoney(row.credit) : ""}
                       </td>
                       <td className="py-2 px-4 text-right tabular-nums font-mono text-sm text-white">
                         {formatMoneyBalance(row.running_balance)}
@@ -511,5 +504,13 @@ export default function GeneralLedgerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function GeneralLedgerPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-400">Loading…</div>}>
+      <GeneralLedgerPageInner />
+    </Suspense>
   );
 }

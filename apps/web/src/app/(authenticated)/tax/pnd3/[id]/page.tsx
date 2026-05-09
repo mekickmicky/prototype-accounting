@@ -7,6 +7,8 @@ import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 import { format } from "date-fns";
+import Decimal from "decimal.js";
+import { KBANK_CURRENT_CODE, WHT_PAYABLE_CODE } from "@/lib/account-codes";
 
 interface TaxFiling {
   id: string;
@@ -65,8 +67,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
 };
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -83,7 +84,7 @@ function fmtPeriod(code: string): string {
 }
 
 function fmtPct(rate: string): string {
-  return `${(parseFloat(rate) * 100).toFixed(0)}%`;
+  return `${new Decimal(rate).times(100).toFixed(0)}%`;
 }
 
 const TH: React.CSSProperties = {
@@ -218,15 +219,20 @@ export default function PND3DetailPage() {
 
   if (error || !filing) {
     return (
-      <div style={{ marginTop: 40, textAlign: "center", fontSize: 13, color: "var(--error)" }}>
-        {error ?? "Filing not found"}
+      <div style={{ marginTop: 40, textAlign: "center" }}>
+        <div style={{ fontSize: 13, color: "var(--error)", marginBottom: 12 }}>
+          {error ?? "Filing not found"}
+        </div>
+        <Link href="/tax/pnd3" style={{ fontSize: 12, color: "var(--accent)" }}>
+          ← Back to ภงด.3
+        </Link>
       </div>
     );
   }
 
   const steps = getSteps(filing.status);
   const s = STATUS_STYLES[filing.status] ?? STATUS_STYLES["DRAFT"]!;
-  const totalWht = parseFloat(filing.withholding_total);
+  const totalWht = new Decimal(filing.withholding_total ?? 0);
 
   const pdfUrl = `/api/v1/tax-filings/${filingId}/pdf`;
   const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -539,7 +545,7 @@ export default function PND3DetailPage() {
       </div>
 
       {/* Closing JE preview (DRAFT / FINALIZED) */}
-      {filing.status !== "SUBMITTED" && totalWht > 0 && (
+      {filing.status !== "SUBMITTED" && totalWht.gt(0) && (
         <div
           style={{
             marginTop: 16,
@@ -562,13 +568,13 @@ export default function PND3DetailPage() {
             </thead>
             <tbody>
               <tr>
-                <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>21120</span> WHT Payable</td>
+                <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{WHT_PAYABLE_CODE}</span> WHT Payable</td>
                 <td style={{ ...TD, color: "var(--text-muted)" }}>Clear WHT payable for {filing.period_code}</td>
                 <td style={{ ...NUM_TD, color: "var(--debit, #C87B5A)" }}>{fmtMoney(totalWht.toFixed(2))}</td>
                 <td style={{ ...NUM_TD, color: "var(--text-dim)" }}>—</td>
               </tr>
               <tr>
-                <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>11020</span> KBank Current</td>
+                <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{KBANK_CURRENT_CODE}</span> KBank Current</td>
                 <td style={{ ...TD, color: "var(--text-muted)" }}>Pay WHT to RD ({filing.period_code})</td>
                 <td style={{ ...NUM_TD, color: "var(--text-dim)" }}>—</td>
                 <td style={{ ...NUM_TD, color: "var(--credit, #6CB278)" }}>{fmtMoney(totalWht.toFixed(2))}</td>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Upload, X, Loader2, Eye, ChevronDown } from "lucide-react";
+import { Upload, X, Loader2, Eye, ChevronDown, Landmark } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -628,7 +628,7 @@ function BankImportPageInner() {
                     fontSize: 13,
                   }}
                 >
-                  <div style={{ fontSize: 32, marginBottom: 10 }}>🏦</div>
+                  <Landmark size={32} style={{ marginBottom: 10, color: "var(--text-muted)" }} />
                   <div style={{ fontWeight: 500, color: "var(--text-primary)", marginBottom: 6 }}>
                     Mock data preview
                   </div>

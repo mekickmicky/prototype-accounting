@@ -1,34 +1,103 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Decimal from "decimal.js";
 import { useUser } from "@/lib/use-user";
+import { apiClient } from "@/lib/api-client";
 
-const PLACEHOLDER_CARDS = [
-  {
-    label: "Current Period",
-    labelTh: "งวดบัญชีปัจจุบัน",
-    note: "Available in Phase 2",
-  },
-  {
-    label: "Accounts Receivable",
-    labelTh: "ลูกหนี้คงค้าง",
-    note: "Available in Phase 3",
-  },
-  {
-    label: "Accounts Payable",
-    labelTh: "เจ้าหนี้คงค้าง",
-    note: "Available in Phase 4",
-  },
-  {
-    label: "Cash & Bank",
-    labelTh: "เงินสดและเงินฝากธนาคาร",
-    note: "Available in Phase 6",
-  },
-] as const;
+function fmtMoney(val: string | number | null | undefined): string {
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function todayISO(): string {
+  return new Date().toISOString().split("T")[0] ?? "";
+}
+
+function currentPeriod(): string {
+  return new Date().toISOString().substring(0, 7);
+}
+
+interface AgingTotals {
+  totals: { total: string };
+}
+
+interface CashPositionData {
+  totals: { closing_balance: string };
+}
+
+interface Pp30PreviewData {
+  vat_payable: string;
+}
+
+interface PeriodItem {
+  code: string;
+  status: string;
+}
+
+interface InvoiceItem {
+  total: string;
+}
+
+interface DashboardData {
+  todayRevenue: string | null;
+  outstandingAR: string | null;
+  outstandingAP: string | null;
+  cashOnHand: string | null;
+  vatDue: string | null;
+  openPeriod: string | null;
+}
 
 export default function DashboardPage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [fetching, setFetching] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    async function load() {
+      const today = todayISO();
+      const period = currentPeriod();
+
+      const [invoicesR, arR, apR, cashR, vatR, periodsR] = await Promise.allSettled([
+        apiClient.getPaged<InvoiceItem[]>(
+          `/api/v1/sales-invoices?status=POSTED&date_from=${today}&date_to=${today}&page_size=500`,
+        ),
+        apiClient.get<AgingTotals>(`/api/v1/reports/ar-aging?as_of=${today}`),
+        apiClient.get<AgingTotals>(`/api/v1/reports/ap-aging?as_of=${today}`),
+        apiClient.get<CashPositionData>(`/api/v1/reports/cash-position?as_of=${today}`),
+        apiClient.post<Pp30PreviewData>(`/api/v1/tax-filings/pp30/preview`, { period }),
+        apiClient.get<PeriodItem[]>(`/api/v1/periods`),
+      ]);
+
+      let todayRevenue: string | null = null;
+      if (invoicesR.status === "fulfilled") {
+        const sum = invoicesR.value.data.reduce(
+          (acc, inv) => acc.plus(new Decimal(inv.total ?? 0)),
+          new Decimal(0),
+        );
+        todayRevenue = sum.toFixed(2);
+      }
+
+      setData({
+        todayRevenue,
+        outstandingAR: arR.status === "fulfilled" ? arR.value.totals.total : null,
+        outstandingAP: apR.status === "fulfilled" ? apR.value.totals.total : null,
+        cashOnHand: cashR.status === "fulfilled" ? cashR.value.totals.closing_balance : null,
+        vatDue: vatR.status === "fulfilled" ? vatR.value.vat_payable : null,
+        openPeriod:
+          periodsR.status === "fulfilled"
+            ? (periodsR.value.find((p) => p.status === "OPEN")?.code ?? null)
+            : null,
+      });
+      setFetching(false);
+    }
+
+    load();
+  }, []);
+
+  if (userLoading) {
     return (
       <div
         style={{
@@ -44,6 +113,50 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const cards: Array<{
+    label: string;
+    labelTh: string;
+    value: string | null;
+    isMoney: boolean;
+  }> = [
+    {
+      label: "Today's Revenue",
+      labelTh: "รายได้วันนี้",
+      value: data?.todayRevenue ?? null,
+      isMoney: true,
+    },
+    {
+      label: "Accounts Receivable",
+      labelTh: "ลูกหนี้คงค้าง",
+      value: data?.outstandingAR ?? null,
+      isMoney: true,
+    },
+    {
+      label: "Accounts Payable",
+      labelTh: "เจ้าหนี้คงค้าง",
+      value: data?.outstandingAP ?? null,
+      isMoney: true,
+    },
+    {
+      label: "Cash & Bank",
+      labelTh: "เงินสดและเงินฝากธนาคาร",
+      value: data?.cashOnHand ?? null,
+      isMoney: true,
+    },
+    {
+      label: "VAT Due (this period)",
+      labelTh: "ภาษีมูลค่าเพิ่มที่ต้องชำระ",
+      value: data?.vatDue ?? null,
+      isMoney: true,
+    },
+    {
+      label: "Current Period",
+      labelTh: "งวดบัญชีปัจจุบัน",
+      value: data?.openPeriod ?? null,
+      isMoney: false,
+    },
+  ];
 
   return (
     <div>
@@ -78,12 +191,12 @@ export default function DashboardPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateColumns: "repeat(3, 1fr)",
           gap: "var(--s-4)",
           marginBottom: "var(--s-5)",
         }}
       >
-        {PLACEHOLDER_CARDS.map((card) => (
+        {cards.map((card) => (
           <div
             key={card.label}
             style={{
@@ -114,42 +227,52 @@ export default function DashboardPage() {
             >
               {card.labelTh}
             </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "24px",
-                color: "var(--text-dim)",
-                marginBottom: "var(--s-1)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              —
-            </div>
-            <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-              {card.note}
-            </div>
+            {fetching ? (
+              <div
+                className="animate-pulse"
+                style={{
+                  height: "30px",
+                  width: "70%",
+                  background: "var(--border)",
+                  borderRadius: "4px",
+                }}
+              />
+            ) : card.value === null ? (
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "24px",
+                  color: "var(--text-dim)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                —
+              </div>
+            ) : card.isMoney ? (
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "24px",
+                  color: "var(--text-primary)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                ฿{fmtMoney(card.value)}
+              </div>
+            ) : (
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "20px",
+                  color: "var(--text-primary)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {card.value}
+              </div>
+            )}
           </div>
         ))}
-      </div>
-
-      <div
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "6px",
-          padding: "var(--s-5)",
-          textAlign: "center",
-        }}
-      >
-        <p
-          style={{
-            fontSize: "13px",
-            color: "var(--text-muted)",
-            margin: 0,
-          }}
-        >
-          Dashboard data will be available after Phase 2 (GL Core) is complete.
-        </p>
       </div>
     </div>
   );

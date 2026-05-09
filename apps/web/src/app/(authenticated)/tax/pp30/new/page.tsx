@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft, Eye, Save } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
+import Decimal from "decimal.js";
 
 interface VatRegisterRow {
   id: string;
@@ -33,9 +34,8 @@ interface TaxFiling {
   filing_no: string;
 }
 
-function fmtMoney(val: string): string {
-  const n = parseFloat(val);
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtMoney(val: string | number): string {
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -124,29 +124,22 @@ export default function NewPP30Page() {
   }
 
   const hasData = aggregate !== null;
-  const vatPayable = aggregate ? parseFloat(aggregate.vat_payable) : 0;
-  const isRefund = vatPayable < 0;
+  const vatPayable: Decimal = aggregate ? new Decimal(aggregate.vat_payable) : new Decimal(0);
+  const isRefund = vatPayable.lt(0);
 
-  // Recalculate input VAT accounting for locally-flagged rows
-  const effectiveInputVat = aggregate
+  const displayInputVat: Decimal = aggregate
     ? aggregate.input_rows
-        .filter((r) => !flagged.has(r.id))
-        .reduce((acc, r) => acc + parseFloat(r.vat_amount), 0) +
-      aggregate.non_claimable_rows
-        .filter((r) => !flagged.has(r.id))
-        .reduce((acc, r) => acc + 0, 0)
-    : 0;
+        .reduce((acc, r) => acc.plus(new Decimal(r.vat_amount)), new Decimal(0))
+        .minus(
+          Array.from(flagged)
+            .map((id) => aggregate.input_rows.find((r) => r.id === id))
+            .filter((r): r is VatRegisterRow => r !== undefined)
+            .reduce((acc, r) => acc.plus(new Decimal(r.vat_amount)), new Decimal(0))
+        )
+    : new Decimal(0);
 
-  const displayInputVat = aggregate
-    ? aggregate.input_rows.reduce((acc, r) => acc + parseFloat(r.vat_amount), 0) -
-      Array.from(flagged)
-        .map((id) => aggregate.input_rows.find((r) => r.id === id))
-        .filter(Boolean)
-        .reduce((acc, r) => acc + parseFloat(r!.vat_amount), 0)
-    : 0;
-
-  const displayOutputVat = aggregate ? parseFloat(aggregate.output_vat) : 0;
-  const displayPayable = displayOutputVat - displayInputVat;
+  const displayOutputVat: Decimal = aggregate ? new Decimal(aggregate.output_vat) : new Decimal(0);
+  const displayPayable: Decimal = displayOutputVat.minus(displayInputVat);
 
   return (
     <div>
@@ -317,7 +310,7 @@ export default function NewPP30Page() {
                       <td style={{ ...NUM_TD, fontWeight: 600 }}>
                         {fmtMoney(
                           aggregate!.output_rows
-                            .reduce((acc, r) => acc + parseFloat(r.net_amount), 0)
+                            .reduce((acc, r) => acc.plus(new Decimal(r.net_amount)), new Decimal(0))
                             .toFixed(2)
                         )}
                       </td>
@@ -411,7 +404,7 @@ export default function NewPP30Page() {
                         {fmtMoney(
                           aggregate!.input_rows
                             .filter((r) => !flagged.has(r.id))
-                            .reduce((acc, r) => acc + parseFloat(r.net_amount), 0)
+                            .reduce((acc, r) => acc.plus(new Decimal(r.net_amount)), new Decimal(0))
                             .toFixed(2)
                         )}
                       </td>
@@ -439,9 +432,9 @@ export default function NewPP30Page() {
               สรุป · Summary
             </div>
             {[
-              { label: "ภาษีขาย · Output VAT", val: displayOutputVat, color: undefined },
-              { label: "ภาษีซื้อ · Input VAT (claimable)", val: -displayInputVat, color: undefined },
-            ].map(({ label, val, color }, i) => (
+              { label: "ภาษีขาย · Output VAT", val: displayOutputVat },
+              { label: "ภาษีซื้อ · Input VAT (claimable)", val: displayInputVat.negated() },
+            ].map(({ label, val }, i) => (
               <div
                 key={i}
                 style={{
@@ -456,10 +449,10 @@ export default function NewPP30Page() {
                   style={{
                     fontFamily: "var(--font-mono)",
                     textAlign: "right",
-                    color: color ?? "var(--text-primary)",
+                    color: "var(--text-primary)",
                   }}
                 >
-                  {val < 0 ? `(${fmtMoney(Math.abs(val).toFixed(2))})` : fmtMoney(val.toFixed(2))}
+                  {val.lt(0) ? `(${fmtMoney(val.abs().toFixed(2))})` : fmtMoney(val.toFixed(2))}
                 </span>
               </div>
             ))}
@@ -477,7 +470,7 @@ export default function NewPP30Page() {
             >
               <span>{isRefund ? "ขอคืนภาษี / Carry Forward" : "ต้องชำระ ณ วันยื่น"}</span>
               <span style={{ fontFamily: "var(--font-mono)", textAlign: "right" }}>
-                ฿{fmtMoney(Math.abs(displayPayable).toFixed(2))}
+                ฿{fmtMoney(displayPayable.abs().toFixed(2))}
               </span>
             </div>
           </div>

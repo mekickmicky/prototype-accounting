@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Loader2, AlertCircle, CheckCircle2, Send, FlaskConical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiClient, ApiError } from "@/lib/api-client";
 
 // ── Shared styles ─────────────────────────────────────────────────────────
 
@@ -411,15 +412,15 @@ function ResultPanel({ result, type }: { result: SendResult | null; type: "visit
 
 function VisitSection() {
   const sampleKeys = Object.keys(SAMPLES_VISIT);
-  const [selectedSample, setSelectedSample] = useState(sampleKeys[0]);
-  const [json, setJson] = useState(() => JSON.stringify(SAMPLES_VISIT[sampleKeys[0]](), null, 2));
+  const [selectedSample, setSelectedSample] = useState(sampleKeys[0]!);
+  const [json, setJson] = useState(() => JSON.stringify(SAMPLES_VISIT[sampleKeys[0]!]!(), null, 2));
   const [sending, setSending] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [result, setResult] = useState<SendResult | null>(null);
 
   function loadSample(key: string) {
     setSelectedSample(key);
-    setJson(JSON.stringify(SAMPLES_VISIT[key](), null, 2));
+    setJson(JSON.stringify(SAMPLES_VISIT[key]?.() ?? {}, null, 2));
     setParseError(null);
     setResult(null);
   }
@@ -436,23 +437,17 @@ function VisitSection() {
     setSending(true);
     setResult(null);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-      const res = await fetch(`${apiBase}/api/v1/settings/integrations/test-webhook`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "visit-completed", payload }),
-      });
-      let body: unknown;
-      try { body = await res.json(); } catch { body = null; }
-      const outerBody = body as { success?: boolean; data?: { status: number; ok: boolean; body: unknown }; error?: { message: string } };
-      if (outerBody?.success && outerBody?.data) {
-        setResult(outerBody.data);
-      } else {
-        setResult({ status: res.status, ok: false, body });
-      }
+      const result = await apiClient.post<SendResult>(
+        "/api/v1/settings/integrations/test-webhook",
+        { type: "visit-completed", payload },
+      );
+      setResult(result);
     } catch (err) {
-      setResult({ status: 0, ok: false, body: { error: err instanceof Error ? err.message : String(err) } });
+      setResult({
+        status: err instanceof ApiError ? err.status : 0,
+        ok: false,
+        body: { error: err instanceof Error ? err.message : String(err) },
+      });
     } finally {
       setSending(false);
     }
@@ -514,6 +509,12 @@ function VisitSection() {
         {sending ? "Sending…" : "Send Webhook"}
       </button>
 
+      {sending && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
+          <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent)" }} />
+        </div>
+      )}
+
       <ResultPanel result={result} type="visit" />
     </div>
   );
@@ -539,23 +540,17 @@ function StockSection() {
     setSending(true);
     setResult(null);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-      const res = await fetch(`${apiBase}/api/v1/settings/integrations/test-webhook`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "stock-export", payload }),
-      });
-      let body: unknown;
-      try { body = await res.json(); } catch { body = null; }
-      const outerBody = body as { success?: boolean; data?: { status: number; ok: boolean; body: unknown }; error?: { message: string } };
-      if (outerBody?.success && outerBody?.data) {
-        setResult(outerBody.data);
-      } else {
-        setResult({ status: res.status, ok: false, body });
-      }
+      const result = await apiClient.post<SendResult>(
+        "/api/v1/settings/integrations/test-webhook",
+        { type: "stock-export", payload },
+      );
+      setResult(result);
     } catch (err) {
-      setResult({ status: 0, ok: false, body: { error: err instanceof Error ? err.message : String(err) } });
+      setResult({
+        status: err instanceof ApiError ? err.status : 0,
+        ok: false,
+        body: { error: err instanceof Error ? err.message : String(err) },
+      });
     } finally {
       setSending(false);
     }
@@ -604,6 +599,12 @@ function StockSection() {
         {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         {sending ? "Sending…" : "Send Webhook"}
       </button>
+
+      {sending && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
+          <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent)" }} />
+        </div>
+      )}
 
       <ResultPanel result={result} type="stock" />
     </div>

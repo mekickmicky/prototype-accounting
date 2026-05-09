@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft, Eye, Save } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
+import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 
@@ -49,8 +50,7 @@ interface TaxFiling {
 }
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -59,7 +59,7 @@ function fmtDate(iso: string): string {
 }
 
 function fmtPct(rate: string): string {
-  return `${(parseFloat(rate) * 100).toFixed(0)}%`;
+  return `${new Decimal(rate).times(100).toFixed(0)}%`;
 }
 
 const TH: React.CSSProperties = {
@@ -358,7 +358,7 @@ export default function NewPND3Page() {
             </div>
             {[
               { label: "จำนวนผู้รับเงิน · Recipients", val: aggregate!.recipient_count, isMoney: false },
-              { label: "ยอดรวมก่อนหัก · Total Gross Amount", val: parseFloat(aggregate!.total_gross), isMoney: true },
+              { label: "ยอดรวมก่อนหัก · Total Gross Amount", val: new Decimal(aggregate!.total_gross).toNumber(), isMoney: true },
             ].map(({ label, val, isMoney }, i) => (
               <div
                 key={i}

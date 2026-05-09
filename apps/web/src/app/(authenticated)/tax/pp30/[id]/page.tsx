@@ -7,6 +7,8 @@ import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 import { format } from "date-fns";
+import Decimal from "decimal.js";
+import { KBANK_CURRENT_CODE, VAT_RECEIVABLE_CODE, VAT_REFUNDABLE_CODE, VAT_PAYABLE_CODE } from "@/lib/account-codes";
 
 interface TaxFiling {
   id: string;
@@ -51,8 +53,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
 };
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -231,8 +232,13 @@ export default function PP30DetailPage() {
 
   if (error || !filing) {
     return (
-      <div style={{ marginTop: 40, textAlign: "center", fontSize: 13, color: "var(--error)" }}>
-        {error ?? "Filing not found"}
+      <div style={{ marginTop: 40, textAlign: "center" }}>
+        <div style={{ fontSize: 13, color: "var(--error)", marginBottom: 12 }}>
+          {error ?? "Filing not found"}
+        </div>
+        <Link href="/tax/pp30" style={{ fontSize: 12, color: "var(--accent)" }}>
+          ← Back to ภพ.30
+        </Link>
       </div>
     );
   }
@@ -240,10 +246,10 @@ export default function PP30DetailPage() {
   const steps = getSteps(filing.status);
   const s = STATUS_STYLES[filing.status] ?? STATUS_STYLES["DRAFT"]!;
 
-  const outputVat = parseFloat(filing.output_vat);
-  const inputVat = parseFloat(filing.input_vat);
-  const vatPayable = parseFloat(filing.vat_payable);
-  const isRefund = outputVat - inputVat < 0;
+  const outputVat = new Decimal(filing.output_vat);
+  const inputVat = new Decimal(filing.input_vat);
+  const vatPayable = new Decimal(filing.vat_payable);
+  const isRefund = outputVat.minus(inputVat).lt(0);
 
   const pdfUrl = `/api/v1/tax-filings/${filingId}/pdf`;
   const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -476,7 +482,7 @@ export default function PP30DetailPage() {
                   <tr style={{ background: "var(--surface)" }}>
                     <td colSpan={3} style={{ ...TD, fontWeight: 600, fontSize: 11 }}>Total</td>
                     <td style={{ ...NUM_TD, fontWeight: 600 }}>
-                      {fmtMoney(aggregate.output_rows.reduce((a, r) => a + parseFloat(r.net_amount), 0).toFixed(2))}
+                      {fmtMoney(aggregate.output_rows.reduce((a, r) => a.plus(new Decimal(r.net_amount)), new Decimal(0)).toFixed(2))}
                     </td>
                     <td style={{ ...NUM_TD, fontWeight: 600, color: "#C8A03C" }}>
                       {fmtMoney(aggregate.output_vat)}
@@ -574,7 +580,7 @@ export default function PP30DetailPage() {
                     {filing.status === "DRAFT" && <td style={TD} />}
                     <td colSpan={3} style={{ ...TD, fontWeight: 600, fontSize: 11 }}>Total (claimable)</td>
                     <td style={{ ...NUM_TD, fontWeight: 600 }}>
-                      {fmtMoney(aggregate.input_rows.reduce((a, r) => a + parseFloat(r.net_amount), 0).toFixed(2))}
+                      {fmtMoney(aggregate.input_rows.reduce((a, r) => a.plus(new Decimal(r.net_amount)), new Decimal(0)).toFixed(2))}
                     </td>
                     <td style={{ ...NUM_TD, fontWeight: 600, color: "#6CB278" }}>
                       {fmtMoney(aggregate.input_vat)}
@@ -602,7 +608,7 @@ export default function PP30DetailPage() {
         </div>
         {[
           { label: "ภาษีขาย · Output VAT", val: outputVat },
-          { label: "ภาษีซื้อ · Input VAT (claimable)", val: -inputVat },
+          { label: "ภาษีซื้อ · Input VAT (claimable)", val: inputVat.negated() },
         ].map(({ label, val }, i) => (
           <div
             key={i}
@@ -610,7 +616,7 @@ export default function PP30DetailPage() {
           >
             <span style={{ color: "var(--text-primary)" }}>{label}</span>
             <span style={{ fontFamily: "var(--font-mono)", textAlign: "right" }}>
-              {val < 0 ? `(${fmtMoney(Math.abs(val).toFixed(2))})` : fmtMoney(val.toFixed(2))}
+              {val.lt(0) ? `(${fmtMoney(val.abs().toFixed(2))})` : fmtMoney(val.toFixed(2))}
             </span>
           </div>
         ))}
@@ -661,25 +667,25 @@ export default function PP30DetailPage() {
               </tr>
             </thead>
             <tbody>
-              {outputVat > 0 && (
+              {outputVat.gt(0) && (
                 <tr>
-                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>21110</span> ภาษีขาย</td>
+                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{VAT_PAYABLE_CODE}</span> ภาษีขาย</td>
                   <td style={{ ...TD, color: "var(--text-muted)" }}>Clear output VAT for {filing.period_code}</td>
                   <td style={{ ...NUM_TD, color: "var(--debit, #C87B5A)" }}>{fmtMoney(filing.output_vat)}</td>
                   <td style={{ ...NUM_TD, color: "var(--text-dim)" }}>—</td>
                 </tr>
               )}
-              {inputVat > 0 && (
+              {inputVat.gt(0) && (
                 <tr>
-                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>14010</span> ภาษีซื้อ</td>
+                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{VAT_RECEIVABLE_CODE}</span> ภาษีซื้อ</td>
                   <td style={{ ...TD, color: "var(--text-muted)" }}>Clear input VAT for {filing.period_code}</td>
                   <td style={{ ...NUM_TD, color: "var(--text-dim)" }}>—</td>
                   <td style={{ ...NUM_TD, color: "var(--credit, #6CB278)" }}>{fmtMoney(filing.input_vat)}</td>
                 </tr>
               )}
-              {!isRefund && vatPayable > 0 && (
+              {!isRefund && vatPayable.gt(0) && (
                 <tr>
-                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>11020</span> KBank Current</td>
+                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{KBANK_CURRENT_CODE}</span> KBank Current</td>
                   <td style={{ ...TD, color: "var(--text-muted)" }}>Pay VAT to RD</td>
                   <td style={{ ...NUM_TD, color: "var(--text-dim)" }}>—</td>
                   <td style={{ ...NUM_TD, color: "var(--credit, #6CB278)" }}>{fmtMoney(vatPayable.toFixed(2))}</td>
@@ -687,9 +693,9 @@ export default function PP30DetailPage() {
               )}
               {isRefund && (
                 <tr>
-                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>14020</span> VAT Refundable</td>
+                  <td style={TD}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{VAT_REFUNDABLE_CODE}</span> VAT Refundable</td>
                   <td style={{ ...TD, color: "var(--text-muted)" }}>VAT refundable / carry-forward</td>
-                  <td style={{ ...NUM_TD, color: "var(--debit, #C87B5A)" }}>{fmtMoney(Math.abs(outputVat - inputVat).toFixed(2))}</td>
+                  <td style={{ ...NUM_TD, color: "var(--debit, #C87B5A)" }}>{fmtMoney(outputVat.minus(inputVat).abs().toFixed(2))}</td>
                   <td style={{ ...NUM_TD, color: "var(--text-dim)" }}>—</td>
                 </tr>
               )}

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
+import Decimal from "decimal.js";
 import type { ColumnDef } from "@tanstack/react-table";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
@@ -33,8 +34,7 @@ function maskAccountNo(no: string | null): string {
 }
 
 function fmtMoney(val: string): string {
-  const n = parseFloat(val);
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export default function BankAccountsPage() {
@@ -131,7 +131,7 @@ export default function BankAccountsPage() {
       header: () => <span style={{ display: "block", textAlign: "right" }}>Balance (THB)</span>,
       cell: ({ getValue }) => {
         const val = getValue() as string;
-        const n = parseFloat(val);
+        const n = new Decimal(val ?? "0");
         return (
           <span
             style={{
@@ -140,7 +140,7 @@ export default function BankAccountsPage() {
               fontFamily: "var(--font-mono)",
               fontSize: 13,
               fontWeight: 500,
-              color: n < 0 ? "var(--error)" : "var(--text-primary)",
+              color: n.lt(0) ? "var(--error)" : "var(--text-primary)",
             }}
           >
             {fmtMoney(val)}
@@ -201,10 +201,6 @@ export default function BankAccountsPage() {
         breadcrumbs={[{ label: "Bank", href: "/bank/accounts" }, { label: "Accounts" }]}
       />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, marginBottom: 12 }}>
-        {loading && <Loader2 size={13} style={{ color: "var(--text-dim)" }} className="animate-spin" />}
-      </div>
-
       {error && (
         <div
           style={{
@@ -215,27 +211,68 @@ export default function BankAccountsPage() {
             fontSize: 12,
             color: "var(--error)",
             marginBottom: 12,
+            marginTop: 16,
           }}
         >
           {error}
         </div>
       )}
 
-      <div
-        style={{
-          borderRadius: 6,
-          border: "1px solid var(--border)",
-          overflow: "hidden",
-          background: "var(--bg-elevated)",
-        }}
-      >
-        <DataTable
-          columns={columns}
-          data={accounts}
-          pageSize={25}
-          emptyMessage="ไม่พบบัญชีธนาคาร"
-        />
-      </div>
+      {loading ? (
+        <div
+          style={{
+            borderRadius: 6,
+            border: "1px solid var(--border)",
+            overflow: "hidden",
+            background: "var(--bg-elevated)",
+            marginTop: 16,
+          }}
+        >
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "12px 16px",
+                borderBottom: i < 7 ? "1px solid var(--border)" : undefined,
+              }}
+            >
+              <div
+                className="animate-pulse"
+                style={{ width: 28, height: 28, borderRadius: 4, background: "rgba(255,255,255,0.06)", flexShrink: 0 }}
+              />
+              <div style={{ flex: 1, display: "flex", gap: 16, alignItems: "center" }}>
+                {[80, 140, 100, 60, 70, 80].map((w, j) => (
+                  <div
+                    key={j}
+                    className="animate-pulse"
+                    style={{ height: 11, width: w, borderRadius: 3, background: "rgba(255,255,255,0.07)" }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div
+          style={{
+            borderRadius: 6,
+            border: "1px solid var(--border)",
+            overflow: "hidden",
+            background: "var(--bg-elevated)",
+            marginTop: error ? 0 : 16,
+          }}
+        >
+          <DataTable
+            columns={columns}
+            data={accounts}
+            pageSize={25}
+            emptyMessage="ไม่พบบัญชีธนาคาร"
+          />
+        </div>
+      )}
     </div>
   );
 }

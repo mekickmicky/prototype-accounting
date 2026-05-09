@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
+import Decimal from "decimal.js";
 import { VendorPicker, type VendorOption } from "@/components/ui/vendor-picker";
 import { ApiError } from "@/lib/api-client";
 import { format } from "date-fns";
@@ -45,8 +46,7 @@ async function apiReq<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 function fmtMoney(val: string | number): string {
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return new Decimal(val ?? 0).toNumber().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(iso: string): string {
@@ -150,6 +150,7 @@ function NewPaymentForm() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     apiReq<BankAccount[]>("/api/v1/bank-accounts")
@@ -172,7 +173,7 @@ function NewPaymentForm() {
       if (prefillBillId) {
         const found = all.find((b) => b.id === prefillBillId);
         if (found) {
-          const bal = (parseFloat(found.net_payable) - parseFloat(found.paid_amount)).toFixed(2);
+          const bal = new Decimal(found.net_payable).minus(found.paid_amount).toDecimalPlaces(2).toString();
           setSelectedBills({ [found.id]: bal });
         }
       }
@@ -194,15 +195,15 @@ function NewPaymentForm() {
 
   useEffect(() => {
     if (!totalOverride) {
-      const sum = Object.values(selectedBills).reduce((s, v) => s + parseFloat(v || "0"), 0);
-      setTotalAmount(sum.toFixed(2));
+      const sum = Object.values(selectedBills).reduce((acc, v) => acc.plus(v || "0"), new Decimal(0));
+      setTotalAmount(sum.toDecimalPlaces(2).toString());
     }
   }, [selectedBills, totalOverride]);
 
   function toggleBill(bill: Bill, checked: boolean) {
     if (checked) {
-      const netPaid = parseFloat(bill.net_payable) - parseFloat(bill.paid_amount);
-      setSelectedBills((prev) => ({ ...prev, [bill.id]: netPaid.toFixed(2) }));
+      const netPaid = new Decimal(bill.net_payable).minus(bill.paid_amount);
+      setSelectedBills((prev) => ({ ...prev, [bill.id]: netPaid.toDecimalPlaces(2).toString() }));
     } else {
       setSelectedBills((prev) => {
         const next = { ...prev };
@@ -225,7 +226,7 @@ function NewPaymentForm() {
 
   function buildPayload() {
     const applications = Object.entries(selectedBills)
-      .filter(([, amt]) => parseFloat(amt || "0") > 0)
+      .filter(([, amt]) => new Decimal(amt || "0").gt(0))
       .map(([bill_id, applied_amount]) => ({ bill_id, applied_amount }));
 
     return {
@@ -241,8 +242,16 @@ function NewPaymentForm() {
     };
   }
 
+  function validateFields(): boolean {
+    const fieldErrors: Record<string, string> = {};
+    if (!vendorId) fieldErrors.vendor = "กรุณาเลือกเจ้าหนี้";
+    if (new Decimal(totalAmount || "0").lte(0)) fieldErrors.totalAmount = "ยอดจ่ายต้องมากกว่า 0";
+    setErrors(fieldErrors);
+    return Object.keys(fieldErrors).length === 0;
+  }
+
   async function handleSaveDraft() {
-    if (!vendorId) { setError("กรุณาเลือกเจ้าหนี้"); return; }
+    if (!validateFields()) return;
     setSaving(true);
     setError(null);
     try {
@@ -259,7 +268,7 @@ function NewPaymentForm() {
   }
 
   async function handlePost() {
-    if (!vendorId) { setError("กรุณาเลือกเจ้าหนี้"); return; }
+    if (!validateFields()) return;
     setSaving(true);
     setError(null);
     try {
@@ -332,9 +341,13 @@ function NewPaymentForm() {
               value={vendorId}
               onChange={(id: string | null, _vendor: VendorOption | null) => {
                 setVendorId(id);
+                if (errors.vendor) setErrors((p) => ({ ...p, vendor: "" }));
               }}
               disabled={saving}
             />
+            {errors.vendor && (
+              <div style={{ fontSize: 11, color: "var(--error)", marginTop: 4 }}>{errors.vendor}</div>
+            )}
           </div>
 
           {/* Unpaid bills */}
@@ -370,9 +383,7 @@ function NewPaymentForm() {
                     </thead>
                     <tbody>
                       {bills.map((bill) => {
-                        const netPayable = parseFloat(bill.net_payable);
-                        const paid = parseFloat(bill.paid_amount);
-                        const bal = netPayable - paid;
+                        const bal = new Decimal(bill.net_payable).minus(bill.paid_amount).toNumber();
                         const checked = bill.id in selectedBills;
                         return (
                           <tr key={bill.id} style={{ background: checked ? "rgba(100,140,220,0.05)" : "transparent" }}>
@@ -404,7 +415,7 @@ function NewPaymentForm() {
                               {fmtMoney(bill.total)}
                             </td>
                             <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)", color: "#C8A03C" }}>
-                              {parseFloat(bill.withholding_total) > 0 ? `(${fmtMoney(bill.withholding_total)})` : "—"}
+                              {new Decimal(bill.withholding_total).gt(0) ? `(${fmtMoney(bill.withholding_total)})` : "—"}
                             </td>
                             <td style={{ ...TD, textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                               {fmtMoney(bill.net_payable)}
@@ -517,11 +528,14 @@ function NewPaymentForm() {
                 <input
                   type="number"
                   value={totalAmount}
-                  onChange={(e) => handleTotalChange(e.target.value)}
+                  onChange={(e) => { handleTotalChange(e.target.value); if (errors.totalAmount) setErrors((p) => ({ ...p, totalAmount: "" })); }}
                   min={0}
                   step="0.01"
-                  style={{ ...INPUT, fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 14 }}
+                  style={{ ...INPUT, fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 14, borderColor: errors.totalAmount ? "var(--error)" : undefined }}
                 />
+                {errors.totalAmount && (
+                  <div style={{ fontSize: 11, color: "var(--error)", marginTop: 3 }}>{errors.totalAmount}</div>
+                )}
               </div>
 
               <div>

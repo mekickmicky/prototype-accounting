@@ -339,10 +339,15 @@ export default function AccountMapPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [accs, map] = await Promise.all([
-        apiClient.get<AccountOption[]>("/api/v1/accounts"),
+      const [rawAccs, map] = await Promise.all([
+        apiClient.get<unknown>("/api/v1/accounts"),
         apiClient.get<AccountMap>("/api/v1/settings/account-map"),
       ]);
+      // Guard: API wraps data in { success, data } envelope; apiClient unwraps body.data.
+      // Handle both shapes defensively in case the contract ever changes.
+      const accs: AccountOption[] = Array.isArray(rawAccs)
+        ? (rawAccs as AccountOption[])
+        : ((rawAccs as { data?: AccountOption[] }).data ?? []);
       setAccounts(accs);
       setServiceRows(recordToRows(map.wind_clinic_service_to_revenue ?? {}));
       setProductRows(recordToRows(map.wind_clinic_product_to_revenue ?? {}));
@@ -364,9 +369,21 @@ export default function AccountMapPage() {
   }, [userLoading, loadData]);
 
   async function handleSave() {
-    setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
+    // Validate: rows with an account selected but empty code would be silently dropped by rowsToRecord
+    const validationErrors: string[] = [];
+    serviceRows.forEach((row, i) => {
+      if (row.account && !row.code.trim()) validationErrors.push(`Service row ${i + 1}: code required`);
+    });
+    productRows.forEach((row, i) => {
+      if (row.account && !row.code.trim()) validationErrors.push(`Product row ${i + 1}: code required`);
+    });
+    if (validationErrors.length > 0) {
+      setSaveError(validationErrors.join("; "));
+      return;
+    }
+    setSaving(true);
     try {
       const payload: AccountMap = {
         wind_clinic_service_to_revenue: rowsToRecord(serviceRows),
