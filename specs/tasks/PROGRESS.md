@@ -16,14 +16,14 @@ Master progress tracker. Update when a phase reaches **all tasks `[x]`**.
 
 | Phase | File | Tasks | Status | Notes |
 |---|---|---:|---|---|
-| 1 — Foundation | [phase-1-foundation.md](./phase-1-foundation.md) | 16 | ⬜ Not started | Monorepo, Prisma schema, mock auth, base layout |
-| 2 — GL Core | [phase-2-gl-core.md](./phase-2-gl-core.md) | 29 | ⬜ Not started | JE post/void, period close, Trial Balance |
-| 3 — AR (Sales) | [phase-3-ar.md](./phase-3-ar.md) | 25 | ⬜ Not started | Customers, invoices, receipts, AR aging |
-| 4 — AP (Purchases) | [phase-4-ap.md](./phase-4-ap.md) | 20 | ⬜ Not started | Vendors, bills, payments + WHT certs |
-| 5 — Tax Filings | [phase-5-tax.md](./phase-5-tax.md) | 15 | ⬜ Not started | ภพ.30, ภงด.3/53 |
-| 6 — Bank Reconciliation | [phase-6-bank.md](./phase-6-bank.md) | 16 | ⬜ Not started | BankProvider, mock, auto-match, slip verify |
-| 7 — Financial Reports | [phase-7-reports.md](./phase-7-reports.md) | 22 | ⬜ Not started | P&L, BS, CF, GL detail, exports |
-| 8 — Integrations | [phase-8-integrations.md](./phase-8-integrations.md) | 15 | ⬜ Not started | Wind-clinic + wind-stock webhooks |
+| 1 — Foundation | [phase-1-foundation.md](./phase-1-foundation.md) | 16 | ✅ Done | Monorepo, Prisma schema, mock auth, base layout |
+| 2 — GL Core | [phase-2-gl-core.md](./phase-2-gl-core.md) | 29 | ✅ Done | JE post/void, period close, Trial Balance |
+| 3 — AR (Sales) | [phase-3-ar.md](./phase-3-ar.md) | 25 | ✅ Done | Customers, invoices, receipts, AR aging |
+| 4 — AP (Purchases) | [phase-4-ap.md](./phase-4-ap.md) | 20 | ✅ Done | Vendors, bills, payments + WHT certs |
+| 5 — Tax Filings | [phase-5-tax.md](./phase-5-tax.md) | 15 | ✅ Done | ภพ.30, ภงด.3/53 |
+| 6 — Bank Reconciliation | [phase-6-bank.md](./phase-6-bank.md) | 16 | ✅ Done | BankProvider, mock, auto-match, slip verify |
+| 7 — Financial Reports | [phase-7-reports.md](./phase-7-reports.md) | 22 | ✅ Done | P&L, BS, CF, GL detail, exports |
+| 8 — Integrations | [phase-8-integrations.md](./phase-8-integrations.md) | 15 | ✅ Done | Wind-clinic + wind-stock webhooks |
 | **Total** | | **158** | | |
 
 ## Model-Tier Distribution
