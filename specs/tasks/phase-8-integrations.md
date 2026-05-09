@@ -47,7 +47,7 @@ T-8.15 (audit log polish) ─┘
 ## Tasks
 
 ### T-8.1 — `WebhookProcessed` model + migration
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** DeepSeek
 - **Files:** `apps/api/prisma/schema.prisma` (EDIT), `apps/api/prisma/migrations/00XX_webhook_processed/migration.sql` (NEW)
 - **Reads:** specs/09 §Idempotency
@@ -59,7 +59,8 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Migration applies; manual insert of duplicate `(source, key)` fails
 
 ### T-8.2 — HMAC validation middleware
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Timeout Min:** 150
 - **Model:** Opus
 - **Files:** `apps/api/src/middleware/webhook-auth.ts` (NEW)
 - **Reads:** specs/09 §HMAC signature, §Receiver validation
@@ -75,7 +76,8 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Test: valid signature passes; bad signature 401; old timestamp 401; signature for tampered body fails
 
 ### T-8.3 — Idempotency helper
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Timeout Min:** 120
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/webhook-idempotency.ts` (NEW)
 - **Reads:** specs/09 §Idempotency
@@ -90,7 +92,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Calling twice with same key returns identical result; second call has `replayed=true`
 
 ### T-8.4 — Account map resolver
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/lib/account-map.ts` (NEW)
 - **Reads:** specs/09 §Account mapping, specs/04 §9.2
@@ -104,7 +106,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Unknown service code returns DEFAULT and emits audit warning; wildcard `SKINCARE_RETINOL` matches `SKINCARE_*`
 
 ### T-8.5 — Visit-completed handler (auto-invoice + receipt)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-09)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/webhooks/wind-clinic.ts` (NEW)
 - **Reads:** specs/09 §1 (full)
@@ -122,7 +124,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Replay with same visit_id returns identical result; clinic webhook with 2 items → invoice with 2 lines, receipt fully applied, all JEs posted
 
 ### T-8.6 — Doctor commission accrual JE
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/services/webhooks/doctor-commission.ts` (NEW)
 - **Reads:** specs/09 §1 (commission section)
@@ -138,7 +140,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Visit with 1 doctor + 30% commission on 1000 net → JE posted: Dr 51020 300 / Cr 21130 300
 
 ### T-8.7 — `/api/v1/webhooks/wind-clinic/visit-completed` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-09)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/webhooks.ts` (NEW)
 - **Reads:** specs/05 §POST /webhooks/wind-clinic/visit-completed
@@ -153,7 +155,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** End-to-end: HMAC-signed POST → invoice + receipt + JE created; bad sig → 401; replay → 200 with same data and `replayed: true`
 
 ### T-8.8 — Stock period-export handler
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Opus
 - **Files:** `apps/api/src/services/webhooks/wind-stock.ts` (NEW)
 - **Reads:** specs/09 §2
@@ -169,7 +171,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Import of 50 entries succeeds; replay returns same result; injecting one unbalanced entry → entire import rolls back, no JEs created
 
 ### T-8.9 — `/api/v1/webhooks/wind-stock/period-export` endpoint
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** Sonnet
 - **Files:** `apps/api/src/routes/webhooks.ts` (EDIT)
 - **Reads:** specs/05 §POST /webhooks/wind-stock/period-export
@@ -183,7 +185,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Round-trip with 5 sample entries; account_not_found returns 422 with missing codes list
 
 ### T-8.10 — Webhook Zod schemas
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
 - **Model:** DeepSeek
 - **Files:** `packages/shared/src/schemas/webhooks.ts` (NEW)
 - **Reads:** specs/09 §1 (visit payload), §2 (stock payload)
@@ -193,7 +195,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Importable; invalid payload rejected with `VALIDATION_ERROR` 400
 
 ### T-8.11 — Mock webhook CLI
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-09)
 - **Model:** Sonnet
 - **Files:** `scripts/mock-webhook.ts` (NEW)
 - **Reads:** specs/09 §1 (sample payload), §HMAC signature (sender side)
@@ -207,7 +209,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** CLI fires test events successfully; test page (T-8.12) can call this CLI under the hood
 
 ### T-8.12 — Test webhook page
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-09)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/settings/integrations/test/page.tsx`, route `POST /settings/integrations/test-webhook` (NEW)
 - **Reads:** specs/04 §8, specs/11 §Phase 8 task 11
@@ -221,7 +223,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Can fire any sample payload from UI and see the resulting invoice/receipt links
 
 ### T-8.13 — Webhook dashboard (log table)
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-09)
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/settings/integrations/dashboard/page.tsx`, route `GET /settings/integrations/log` (NEW)
 - **Reads:** specs/04 §8, specs/11 §Phase 8 task 12
@@ -235,7 +237,8 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Dashboard shows real webhook history; click row navigates to invoice/receipt detail
 
 ### T-8.14 — Account-map editor UI
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-08)
+- **Timeout Min:** 120
 - **Model:** Sonnet
 - **Files:** `apps/web/src/app/(authenticated)/settings/account-map/page.tsx`, route `PATCH /settings/account-map` (NEW)
 - **Reads:** specs/04 §9.2, specs/09 §Account mapping
@@ -249,7 +252,7 @@ T-8.15 (audit log polish) ─┘
 - **Done when:** Edit + save → fire mock webhook → resulting invoice uses new account; admin only
 
 ### T-8.15 — Webhook audit log polish
-- [ ] **Status:** Not started
+- [x] **Status:** Done (2026-05-09)
 - **Model:** DeepSeek
 - **Files:** `apps/api/src/services/audit-log.ts` (EDIT — extend with WEBHOOK action)
 - **Reads:** specs/02 §11

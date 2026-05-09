@@ -13,6 +13,8 @@ import { vendorRoutes } from "./routes/vendors";
 import { billRoutes } from "./routes/bills";
 import { paymentRoutes } from "./routes/payments";
 import { taxFilingRoutes } from "./routes/tax-filings";
+import { settingsRoutes } from "./routes/settings";
+import { webhookRoutes } from "./routes/webhooks";
 import { errorHandler } from "./middleware/error-handler";
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -36,7 +38,9 @@ const app = new Elysia()
       .use(vendorRoutes)
       .use(billRoutes)
       .use(paymentRoutes)
-      .use(taxFilingRoutes),
+      .use(taxFilingRoutes)
+      .use(settingsRoutes)
+      .use(webhookRoutes),
   )
   .listen(PORT);
 

@@ -41,6 +41,8 @@ enum JESourceType {
   RECURRING
   ADJUSTMENT
   REVERSAL
+  DOCTOR_COMMISSION
+  WIND_VISIT
 }
 
 enum JEStatus {
@@ -620,13 +622,13 @@ model Setting {
 }
 
 model WebhookProcessed {
-  id           String   @id @default(cuid())
-  source       String
-  event_id     String
-  event_type   String
-  processed_at DateTime @default(now())
+  id              String   @id @default(cuid())
+  source          String
+  idempotency_key String
+  result_json     Json
+  created_at      DateTime @default(now())
 
-  @@unique([source, event_id])
-  @@index([source, event_type])
+  @@unique([source, idempotency_key])
+  @@index([created_at])
   @@map("webhooks_processed")
 }

@@ -107,7 +107,10 @@ const NAV_GROUPS: NavGroup[] = [
     id: "integrations",
     label: "Integrations",
     Icon: Webhook,
-    items: [{ label: "Webhook Log", href: "/integrations/webhooks" }],
+    items: [
+      { label: "Webhook Dashboard", href: "/settings/integrations/dashboard", ready: true },
+      { label: "Test Webhooks", href: "/settings/integrations/test", ready: true },
+    ],
   },
   {
     id: "settings",
@@ -117,7 +120,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Company", href: "/settings/company" },
       { label: "Account Map", href: "/settings/account-map" },
       { label: "Users", href: "/settings/users" },
-      { label: "Audit Log", href: "/settings/audit-log" },
+      { label: "Audit Log", href: "/settings/audit-log", ready: true },
     ],
   },
 ];

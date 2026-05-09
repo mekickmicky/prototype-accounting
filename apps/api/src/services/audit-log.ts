@@ -10,7 +10,9 @@ export type AuditAction =
   | 'PERIOD_REOPEN'
   | 'LOGIN'
   | 'EXPORT'
-  | 'IMPORT';
+  | 'IMPORT'
+  | 'WEBHOOK_RECEIVED'
+  | 'WEBHOOK_REJECTED';
 
 export interface LogAuditEventInput {
   actor_id?: string;
@@ -20,6 +22,8 @@ export interface LogAuditEventInput {
   before?: object;
   after?: object;
   reason?: string;
+  ip_address?: string;
+  user_agent?: string;
 }
 
 const MAX_SNAPSHOT_BYTES = 50 * 1024;
@@ -38,7 +42,7 @@ export async function logAuditEvent(
   tx: Prisma.TransactionClient,
   input: LogAuditEventInput,
 ): Promise<void> {
-  const { actor_id, action, entity_type, entity_id, before, after, reason } = input;
+  const { actor_id, action, entity_type, entity_id, before, after, reason, ip_address, user_agent } = input;
 
   let actor_name: string | null = null;
   if (actor_id) {
@@ -61,6 +65,8 @@ export async function logAuditEvent(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       after_json: after !== undefined ? (truncateSnapshot(after) as any) : null,
       reason: reason ?? null,
+      ip_address: ip_address ?? null,
+      user_agent: user_agent ?? null,
     },
   });
 }

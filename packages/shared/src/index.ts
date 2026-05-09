@@ -7,5 +7,6 @@ export * from "./schemas/gl";
 export * from "./schemas/ar";
 export * from "./schemas/ap";
 export * from "./schemas/tax";
+export * from "./schemas/webhooks";
 export { CLINIC_SERVICES, findService } from "./catalog/services";
 export type { CatalogService, ServiceCategory } from "./catalog/services";
