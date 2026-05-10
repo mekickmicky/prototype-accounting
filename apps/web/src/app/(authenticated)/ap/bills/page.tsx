@@ -104,7 +104,7 @@ export default function BillsPage() {
         if (opts.branch) qs.set("branch", opts.branch);
         if (opts.period) qs.set("period", opts.period);
         if (opts.overdue) qs.set("overdue", "true");
-        const result = await apiClient.get<ListResponse>(`/api/v1/bills?${qs}`);
+        const result = await apiClient.getPaged<Bill[]>(`/api/v1/bills?${qs}`);
         setBills(result.data ?? []);
         setTotal(result.meta?.total ?? 0);
       } catch (err) {

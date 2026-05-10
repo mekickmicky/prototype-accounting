@@ -44,18 +44,25 @@ export async function logAuditEvent(
 ): Promise<void> {
   const { actor_id, action, entity_type, entity_id, before, after, reason, ip_address, user_agent } = input;
 
+  let resolvedActorId: string | null = null;
   let actor_name: string | null = null;
   if (actor_id) {
     const user = await tx.user.findUnique({
       where: { id: actor_id },
       select: { name: true },
     });
-    actor_name = user?.name ?? null;
+    if (user) {
+      resolvedActorId = actor_id;
+      actor_name = user.name;
+    } else {
+      // Non-user actor (e.g. 'SYSTEM'): store identity in actor_name, leave FK null.
+      actor_name = actor_id;
+    }
   }
 
   await tx.auditLog.create({
     data: {
-      actor_id: actor_id ?? null,
+      actor_id: resolvedActorId,
       actor_name,
       action,
       entity_type,

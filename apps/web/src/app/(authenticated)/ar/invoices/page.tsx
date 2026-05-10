@@ -133,7 +133,7 @@ export default function InvoicesPage() {
         if (opts.dateFrom) qs.set("date_from", opts.dateFrom);
         if (opts.dateTo) qs.set("date_to", opts.dateTo);
         if (opts.overdue) qs.set("overdue", "true");
-        const result = await apiClient.get<ListResponse>(`/api/v1/sales-invoices?${qs}`);
+        const result = await apiClient.getPaged<SalesInvoice[]>(`/api/v1/sales-invoices?${qs}`);
         setInvoices(result.data ?? []);
         setTotal(result.meta?.total ?? 0);
       } catch (err) {

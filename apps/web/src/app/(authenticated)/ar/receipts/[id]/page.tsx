@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { ApiError } from "@/lib/api-client";
 import Decimal from "decimal.js";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 type ReceiptStatus = "DRAFT" | "POSTED" | "VOID";
 type PaymentMethod = "CASH" | "TRANSFER" | "CARD" | "PROMPTPAY" | "CHEQUE" | "OTHER";

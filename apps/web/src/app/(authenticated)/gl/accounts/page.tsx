@@ -8,23 +8,11 @@ import { useUser } from "@/lib/use-user";
 import { PageHeader } from "@/components/ui/page-header";
 import { AccountTree, type AccountRow } from "@/components/gl/account-tree";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
 async function patchAccount(
   code: string,
   patch: { name_th?: string; is_active?: boolean }
 ): Promise<AccountRow> {
-  const res = await fetch(`${API_BASE}/api/v1/accounts/${encodeURIComponent(code)}`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-  const body = await res.json();
-  if (!body.success) {
-    throw new Error(body.error?.message ?? "Update failed");
-  }
-  return body.data as AccountRow;
+  return apiClient.patch<AccountRow>(`/api/v1/accounts/${encodeURIComponent(code)}`, patch);
 }
 
 const ACCOUNT_TYPES = ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"] as const;

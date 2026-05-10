@@ -115,7 +115,7 @@ export const billRoutes = new Elysia({ prefix: '/bills' })
               select: { id: true, payment_no: true, payment_date: true, total_amount: true },
             },
           },
-          orderBy: { created_at: 'asc' },
+          orderBy: { applied_at: 'asc' },
         },
       },
     });

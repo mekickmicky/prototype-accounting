@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge, type DocumentStatus } from "@/components/ui/status-badge";
 import { CloseChecklistModal } from "@/components/gl/close-checklist-modal";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 interface Period {
   code: string;

@@ -17,7 +17,7 @@ import { DatePickerTH } from "@/components/ui/date-picker-th";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 const SOURCE_TYPE_OPTIONS = [
   { value: "MANUAL", label: "Manual" },

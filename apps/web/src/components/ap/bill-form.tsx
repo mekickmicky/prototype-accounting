@@ -39,7 +39,7 @@ function newLine(): FormLine {
   return {
     _key: crypto.randomUUID(),
     description: "",
-    expense_account_code: "5000",
+    expense_account_code: "51010",
     qty: "1",
     unit_price: "0.00",
     vat_rate: "7",
@@ -190,6 +190,7 @@ function TotalRow({
 
 interface LineRowProps {
   line: FormLine;
+  idx: number;
   vatInclusive: boolean;
   vendorType: "INDIVIDUAL" | "JURISTIC" | null;
   onChange: (patch: Partial<FormLine>) => void;
@@ -197,7 +198,7 @@ interface LineRowProps {
   canRemove: boolean;
 }
 
-function LineRow({ line, vatInclusive, vendorType, onChange, onRemove, canRemove }: LineRowProps) {
+function LineRow({ line, idx, vatInclusive, vendorType, onChange, onRemove, canRemove }: LineRowProps) {
   const lineTotal = React.useMemo(() => {
     try {
       const net = calcLineNet({
@@ -237,6 +238,7 @@ function LineRow({ line, vatInclusive, vendorType, onChange, onRemove, canRemove
       <td style={{ ...cellStyle, minWidth: 160 }}>
         <input
           type="text"
+          data-testid={`field-description-${idx}`}
           value={line.description}
           onChange={(e) => onChange({ description: e.target.value })}
           placeholder="รายละเอียด"
@@ -259,6 +261,7 @@ function LineRow({ line, vatInclusive, vendorType, onChange, onRemove, canRemove
       <td style={{ ...cellStyle, width: 64 }}>
         <input
           type="number"
+          data-testid={`field-qty-${idx}`}
           value={line.qty}
           onChange={(e) => onChange({ qty: e.target.value })}
           min="0"
@@ -271,6 +274,7 @@ function LineRow({ line, vatInclusive, vendorType, onChange, onRemove, canRemove
       <td style={{ ...cellStyle, width: 90 }}>
         <input
           type="number"
+          data-testid={`field-amount-${idx}`}
           value={line.unit_price}
           onChange={(e) => onChange({ unit_price: e.target.value })}
           min="0"
@@ -331,6 +335,7 @@ function LineRow({ line, vatInclusive, vendorType, onChange, onRemove, canRemove
       <td style={{ ...cellStyle, width: 28, textAlign: "center" }}>
         <button
           type="button"
+          data-testid={`action-remove-line-${idx}`}
           onClick={onRemove}
           disabled={!canRemove}
           style={{
@@ -405,7 +410,7 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
       try {
         const net = calcLineNet({ qty: l.qty || "0", unit_price: l.unit_price || "0", discount: "0" });
         const { net: lineNetAmt } = calcLineVat({ net, vat_rate: l.vat_rate, vat_inclusive: vatInclusive });
-        const code = l.expense_account_code || "5000";
+        const code = l.expense_account_code || "51010";
         expenseMap.set(code, (expenseMap.get(code) ?? D(0)).plus(lineNetAmt));
       } catch {
         // skip malformed line
@@ -557,13 +562,15 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={LABEL}>เจ้าหนี้ *</label>
-                <VendorPicker
-                  value={vendorId}
-                  onChange={(id, v) => {
-                    setVendorId(id);
-                    setVendor(v);
-                  }}
-                />
+                <div data-testid="field-vendor">
+                  <VendorPicker
+                    value={vendorId}
+                    onChange={(id, v) => {
+                      setVendorId(id);
+                      setVendor(v);
+                    }}
+                  />
+                </div>
               </div>
 
               <div>
@@ -594,6 +601,7 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
                 <label style={LABEL}>วันที่รับใบแจ้งหนี้ *</label>
                 <input
                   type="date"
+                  data-testid="field-issue-date"
                   value={issueDate}
                   onChange={(e) => setIssueDate(e.target.value)}
                   style={INPUT}
@@ -633,6 +641,7 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
               </h3>
               <button
                 type="button"
+                data-testid="action-add-line"
                 onClick={addLine}
                 style={{
                   display: "inline-flex",
@@ -669,10 +678,11 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((line) => (
+                  {lines.map((line, idx) => (
                     <LineRow
                       key={line._key}
                       line={line}
+                      idx={idx}
                       vatInclusive={vatInclusive}
                       vendorType={vendorType}
                       onChange={(patch) => updateLine(line._key, patch)}
@@ -747,6 +757,7 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
             </button>
             <button
               type="button"
+              data-testid="action-submit"
               onClick={() => submit(onSaveDraft)}
               disabled={saving}
               style={{
@@ -768,6 +779,7 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
             </button>
             <button
               type="button"
+              data-testid="action-post"
               onClick={() => submit(onPost)}
               disabled={saving}
               style={{
@@ -814,16 +826,18 @@ export function BillForm({ defaultValues, onSaveDraft, onPost, onCancel }: BillF
                   value={formatTHB(totals.vat_total)}
                 />
                 <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                <TotalRow label="ยอดรวม" value={formatTHB(totals.total)} />
+                <div data-testid="total-grand"><TotalRow label="ยอดรวม" value={formatTHB(totals.total)} /></div>
                 {!totals.withholding_total.isZero() && (
-                  <TotalRow
-                    label="หัก ณ ที่จ่าย (WHT)"
-                    value={`(${formatTHB(totals.withholding_total)})`}
-                    dimmed
-                  />
+                  <div data-testid="total-wht">
+                    <TotalRow
+                      label="หัก ณ ที่จ่าย (WHT)"
+                      value={`(${formatTHB(totals.withholding_total)})`}
+                      dimmed
+                    />
+                  </div>
                 )}
                 <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                <TotalRow label="ยอดสุทธิที่ต้องชำระ" value={formatTHB(totals.net_payable)} bold accent />
+                <div data-testid="total-net-payable"><TotalRow label="ยอดสุทธิที่ต้องชำระ" value={formatTHB(totals.net_payable)} bold accent /></div>
               </div>
             ) : (
               <p style={{ fontSize: 12, color: "var(--text-dim)", margin: 0 }}>

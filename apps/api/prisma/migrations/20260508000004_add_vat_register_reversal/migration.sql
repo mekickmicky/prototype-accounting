@@ -8,10 +8,10 @@ ALTER TABLE "vat_register"
   ADD COLUMN "reversal_of_id" TEXT;
 
 ALTER TABLE "vat_register"
-  ADD CONSTRAINT "vat_register_reversal_of_id_unique" UNIQUE ("reversal_of_id");
+  ADD CONSTRAINT "vat_register_reversal_of_id_key" UNIQUE ("reversal_of_id");
 
 ALTER TABLE "vat_register"
-  ADD CONSTRAINT "vat_register_reversal_of_fkey"
+  ADD CONSTRAINT "vat_register_reversal_of_id_fkey"
   FOREIGN KEY ("reversal_of_id") REFERENCES "vat_register"("id");
 
 -- Replace the non-negative amounts constraint to allow negative values strictly

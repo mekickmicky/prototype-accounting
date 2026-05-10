@@ -196,7 +196,7 @@ export default function WhtCertsPage() {
         if (opts.period) qs.set("period", opts.period);
         if (opts.dateFrom) qs.set("date_from", opts.dateFrom);
         if (opts.dateTo) qs.set("date_to", opts.dateTo);
-        const result = await apiClient.get<ListResponse>(`/api/v1/tax-filings/wht-certs?${qs}`);
+        const result = await apiClient.getPaged<WhtCert[]>(`/api/v1/tax-filings/wht-certs?${qs}`);
         setCerts(result.data ?? []);
         setTotal(result.meta?.total ?? 0);
       } catch (err) {
@@ -222,7 +222,10 @@ export default function WhtCertsPage() {
   function handleQChange(val: string) {
     setQ(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => applyFilters(1), 350);
+    debounceRef.current = setTimeout(() => {
+      setPage(1);
+      fetchCerts({ q: val.trim(), status, period, dateFrom, dateTo, page: 1 });
+    }, 350);
   }
 
   function handleFilterChange(
@@ -375,6 +378,7 @@ export default function WhtCertsPage() {
       header: "",
       cell: ({ row }) => (
         <button
+          data-testid="action-pdf"
           onClick={() =>
             setPreviewCert({ id: row.original.id, cert_no: row.original.cert_no })
           }
@@ -434,6 +438,7 @@ export default function WhtCertsPage() {
           />
           <input
             type="text"
+            data-testid="filter-vendor"
             value={q}
             onChange={(e) => handleQChange(e.target.value)}
             placeholder="ค้นหา cert_no หรือ vendor..."

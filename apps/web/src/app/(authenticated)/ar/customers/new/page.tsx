@@ -121,7 +121,7 @@ export default function NewCustomerPage() {
           <div
             style={{
               padding: "8px 12px",
-              background: "rgba(var(--accent-rgb, 180,140,100),0.08)",
+              background: "rgba(200, 150, 122, 0.08)",
               border: "1px solid var(--border)",
               borderRadius: 5,
               fontSize: 11,

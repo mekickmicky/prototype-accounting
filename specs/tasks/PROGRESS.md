@@ -106,3 +106,25 @@ When every task in a phase is `[x]`, run the phase's "Acceptance Criteria → Su
 
 **T-12.3 sub-item: AP Balance column in `/ap/vendors`**
 The vendor list endpoint (`GET /api/v1/vendors`) does not return outstanding_balance per vendor — that field is only available on `GET /api/v1/vendors/:id`. To show a live AP Balance column in the vendors list, the list endpoint needs to include balance data (add `?include=balance` query param support or always include a balance sub-query in `listVendors`). A TODO comment has been added to the column cell in `apps/web/src/app/(authenticated)/ap/vendors/page.tsx`. No human decision required — this is a backend enhancement task for the list endpoint.
+
+**T-15.6 — E2E test stack cannot boot due to broken Prisma migration**
+The e2e `global-setup.ts` runs `prisma migrate deploy` against fresh per-worker databases. Migration `20260507215617_add_vat_register_reversal` (third in the chain) fails with `constraint "vat_register_reversal_of_fkey" of relation "vat_register" does not exist`. The init migration never created that constraint name; this `DROP CONSTRAINT` step is invalid against a clean DB. A duplicate migration `20260508000004_add_vat_register_reversal` then properly adds the column. Net effect: any worker spinning up a fresh e2e DB cannot complete `migrate deploy`, so no e2e flow spec (including the new `06-reports.spec.ts` written for T-15.6) can run. The reports spec file itself is complete and type-checks; it follows the spec's API-cross-validation pattern and does not depend on `data-testid` attributes. Resolution requires a human to either fix/remove the broken migration or repair migration history. Out of scope for T-15.6 worker.
+
+## Open questions / blockers
+
+### T-15.8 — API INTERNAL_ERROR on /customers endpoint
+The E2E fixture (`data.ts`) calls the customers list endpoint (`GET /api/v1/ar/customers?limit=200`) to set up test data. The API consistently returns `INTERNAL_ERROR - เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง` when processing this request. This blocks most test cases (tests #1-7, #9 in the full run) from executing.
+
+**Fixed issues:**
+- ES module compatibility: Added `"type": "module"` to `apps/web/package.json`
+- Fixed `__dirname` undefined errors in `global-setup.ts`, `global-teardown.ts`, `auth.ts`, `data.ts`
+- Fixed fixture type mismatch: API returns `data: [Customer[]]` not `data: { customers: [...] }`
+
+**Remaining blockers:**
+1. **API INTERNAL_ERROR on GET /api/v1/ar/customers** — requires Sonnet agent to debug and fix the customers endpoint in `apps/api/src/routes/customers.ts` or `apps/api/src/services/customer.ts`
+2. **GUARD-07 authorization check** — API returns 422 (unprocessable) instead of 403 (forbidden) when viewer role attempts to create JE. Suggests authorization check happens after validation. Requires API-level fix.
+3. **Webhook endpoint connectivity** — Test #10 fails with `fetch failed` when posting to webhook endpoint. May be infrastructure or endpoint routing issue.
+
+**Pass rate:** 4/14 tests passing (28.6%). 10 failed, 105 did not run (blocked by setup failures).
+
+**Impact:** Cannot complete fixture test data setup due to API returning INTERNAL_ERROR. Must fix backend before E2E tests can run.

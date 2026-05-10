@@ -12,6 +12,7 @@ import {
   VoidPaymentBody,
 } from '@wind-acc/shared';
 import { WhtCertPDF, type WhtCertData } from '../pdf/wht-cert';
+import { PaymentVoucherPDF, type PaymentVoucherData } from '../pdf/payment-voucher';
 import {
   createDraft,
   updateDraft,
@@ -179,14 +180,14 @@ export const paymentRoutes = new Elysia({ prefix: '/payments' })
       where: { id: params.id },
       include: {
         vendor: true,
-        bank_account: { select: { id: true, account_name: true, account_no: true } },
+        bank_account: { select: { id: true, name: true, account_number: true } },
         applications: {
           include: {
             bill: {
               select: { id: true, bill_no: true, issue_date: true, total: true },
             },
           },
-          orderBy: { created_at: 'asc' },
+          orderBy: { applied_at: 'asc' },
         },
         withholding: { orderBy: { created_at: 'asc' } },
       },
@@ -223,11 +224,20 @@ export const paymentRoutes = new Elysia({ prefix: '/payments' })
     return { success: true as const, data: payment };
   })
 
-  // GET /payments/:id/pdf — payment voucher stub
+  // GET /payments/:id/pdf — payment voucher PDF
   .get('/:id/pdf', async ({ params }) => {
     const payment = await prisma.payment.findUnique({
       where: { id: params.id },
-      select: { id: true, payment_no: true, status: true },
+      include: {
+        vendor: { select: { name: true, name_th: true, tax_id: true } },
+        bank_account: { select: { name: true, account_number: true } },
+        applications: {
+          include: {
+            bill: { select: { bill_no: true, issue_date: true, total: true } },
+          },
+          orderBy: { applied_at: 'asc' },
+        },
+      },
     });
     if (!payment) {
       throw new BusinessRuleError('NOT_FOUND', { entity: 'Payment', id: params.id });
@@ -238,11 +248,38 @@ export const paymentRoutes = new Elysia({ prefix: '/payments' })
         reason: 'cannot_generate_pdf_for_draft',
       });
     }
-    const stub = `Payment ${payment.payment_no} — payment voucher PDF not yet implemented.`;
-    return new Response(stub, {
+
+    const voucherData: PaymentVoucherData = {
+      payment_no: payment.payment_no,
+      payment_date: payment.payment_date,
+      branch_code: payment.branch_code,
+      payment_method: payment.payment_method,
+      cheque_no: payment.cheque_no,
+      notes: payment.notes,
+      total_amount: payment.total_amount.toString(),
+      withholding_total: payment.withholding_total.toString(),
+      net_paid: payment.net_paid.toString(),
+      vendor_name: payment.vendor.name,
+      vendor_name_th: payment.vendor.name_th,
+      vendor_tax_id: payment.vendor.tax_id,
+      bank_account_name: payment.bank_account?.name ?? null,
+      bank_account_no: payment.bank_account?.account_number ?? null,
+      company_name: WIND_CLINIC_ISSUER.name_en,
+      company_tax_id: WIND_CLINIC_ISSUER.tax_id,
+      bills: payment.applications.map((app) => ({
+        bill_no: app.bill.bill_no,
+        bill_date: app.bill.issue_date,
+        original_amount: app.bill.total.toString(),
+        paid_amount: app.applied_amount.toString(),
+      })),
+    };
+
+    const element = React.createElement(PaymentVoucherPDF, { data: voucherData });
+    const buffer = await renderToBuffer(element);
+    return new Response(buffer, {
       headers: {
-        'Content-Type': 'text/plain',
-        'Content-Disposition': `inline; filename="payment-${payment.payment_no}.txt"`,
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="payment-${payment.payment_no}.pdf"`,
       },
     });
   })

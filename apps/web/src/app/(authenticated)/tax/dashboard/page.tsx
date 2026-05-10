@@ -6,7 +6,7 @@ import { Plus, Loader2, AlertTriangle, Clock } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import Decimal from "decimal.js";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -211,7 +211,7 @@ export default function TaxDashboardPage() {
             body: JSON.stringify({ period }),
             credentials: "include",
           }),
-          fetch(`${API_BASE}/api/v1/tax-filings/wht-certs?period=${period}&page_size=200`, {
+          fetch(`${API_BASE}/api/v1/tax-filings/wht-certs?period=${period}&page_size=100`, {
             credentials: "include",
           }),
           fetch(`${API_BASE}/api/v1/tax-filings?page_size=5&page=1`, { credentials: "include" }),

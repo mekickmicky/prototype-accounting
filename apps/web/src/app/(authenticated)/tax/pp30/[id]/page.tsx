@@ -252,7 +252,7 @@ export default function PP30DetailPage() {
   const isRefund = outputVat.minus(inputVat).lt(0);
 
   const pdfUrl = `/api/v1/tax-filings/${filingId}/pdf`;
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  const API_BASE = "";
 
   return (
     <div>
@@ -267,6 +267,7 @@ export default function PP30DetailPage() {
         actions={
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <a
+              data-testid="action-export-pdf"
               href={`${API_BASE}${pdfUrl}`}
               target="_blank"
               rel="noopener noreferrer"

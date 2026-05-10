@@ -46,6 +46,12 @@ export const periodRoutes = new Elysia({ prefix: '/periods' })
 
     return { success: true as const, data };
   })
+  // GET /periods/:code — single period by code
+  .get('/:code', async ({ params }) => {
+    const period = await prisma.fiscalPeriod.findUnique({ where: { code: params.code } });
+    if (!period) throw new BusinessRuleError('NOT_FOUND', { period_code: params.code });
+    return { success: true as const, data: period };
+  })
   // GET /periods/:code/close-checklist
   .get('/:code/close-checklist', async ({ params }) => {
     const checklist = await closeChecklist(params.code);

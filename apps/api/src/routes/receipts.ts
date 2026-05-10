@@ -131,7 +131,7 @@ export const receiptRoutes = new Elysia({ prefix: '/receipts' })
       customer_address: receipt.customer.address,
       customer_phone: receipt.customer.phone,
       payment_method: receipt.payment_method,
-      bank_name: receipt.bank_account?.account_name ?? null,
+      bank_name: receipt.bank_account?.name ?? null,
       slip_ref: receipt.slip_ref,
       total_amount: total.toFixed(2),
       card_fee: D(receipt.card_fee.toString()).toFixed(2),

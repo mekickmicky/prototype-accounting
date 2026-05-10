@@ -38,6 +38,7 @@ const MAX_PARALLEL = parseInt(process.env.MAX_PARALLEL ?? '3', 10);
 const BUDGET_USD = {
   Opus:     parseFloat(process.env.BUDGET_USD_OPUS     ?? '3.00'),
   Sonnet:   parseFloat(process.env.BUDGET_USD_SONNET   ?? '1.50'),
+  Haiku:    parseFloat(process.env.BUDGET_USD_HAIKU    ?? '0.30'),
   DeepSeek: parseFloat(process.env.BUDGET_USD_DEEPSEEK ?? '0.50'),
 } as const;
 
@@ -47,6 +48,7 @@ const BUDGET_USD = {
 const WIP_TIMEOUT_MIN = {
   Opus:     parseInt(process.env.WIP_TIMEOUT_MIN_OPUS     ?? '90', 10),
   Sonnet:   parseInt(process.env.WIP_TIMEOUT_MIN_SONNET   ?? '60', 10),
+  Haiku:    parseInt(process.env.WIP_TIMEOUT_MIN_HAIKU    ?? '30', 10),
   DeepSeek: parseInt(process.env.WIP_TIMEOUT_MIN_DEEPSEEK ?? '30', 10),
 } as const;
 const WIP_STARTED_FILE = join(ROOT, '.orchestrator.wip-started.json');
@@ -139,7 +141,7 @@ const HALT_PATTERNS = new Set(['auth_invalid', 'quota_exhausted', 'deepseek_paym
 const warnCounters = new Map<string, Map<string, number>>();
 
 type Status = 'todo' | 'wip' | 'done' | 'blocked';
-type Model = 'Opus' | 'Sonnet' | 'DeepSeek';
+type Model = 'Opus' | 'Sonnet' | 'Haiku' | 'DeepSeek';
 
 // Runtime override: when DEEPSEEK_FALLBACK is set to Sonnet or Opus, tasks
 // planned as DeepSeek run on the fallback model instead. The task spec
@@ -678,7 +680,7 @@ function providerFor(model: Model, task: Task): { alias: string; flags: string }
   if (model === 'DeepSeek') {
     return { alias: 'ai-deepseek', flags: `-p --permission-mode bypassPermissions${budgetFlag}` };
   }
-  const cliModel = model === 'Opus' ? 'opus' : 'sonnet';
+  const cliModel = model === 'Opus' ? 'opus' : model === 'Haiku' ? 'haiku' : 'sonnet';
   return {
     alias: 'ai-anthropic',
     flags: `-p --model ${cliModel} --permission-mode bypassPermissions${budgetFlag}`,

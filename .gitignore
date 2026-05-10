@@ -53,3 +53,12 @@ tmp/
 # Orchestrator runtime state (Safeguard #2)
 .orchestrator.wip-started.json
 .orchestrator.stop
+
+# Claude runtime state
+.claude/scheduled_tasks.lock
+
+# E2E test auth fixtures (contain live session tokens)
+apps/web/e2e/fixtures/.auth-*.json
+
+# Test credentials / tokens
+docs/test/auth.txt

@@ -250,18 +250,18 @@ function TreeNode({
               role="switch"
               aria-checked={account.is_active}
               title={account.is_active ? "Active — click to deactivate" : "Inactive — click to activate"}
-              className={cn(
-                "relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border transition-colors duration-[150ms]",
-                account.is_active
-                  ? "border-[--success] bg-[--success]"
-                  : "border-[--border-strong] bg-[--surface]"
-              )}
+              className="relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border transition-colors duration-[150ms]"
+              style={{
+                backgroundColor: account.is_active ? "var(--accent)" : "var(--surface)",
+                borderColor: account.is_active ? "var(--accent)" : "var(--border-strong)",
+              }}
             >
               <span
                 className={cn(
-                  "pointer-events-none mt-[1px] inline-block h-3 w-3 rounded-full bg-white shadow transition-transform duration-[150ms]",
+                  "pointer-events-none mt-[1px] inline-block h-3 w-3 rounded-full shadow transition-transform duration-[150ms]",
                   account.is_active ? "translate-x-[14px]" : "translate-x-[1px]"
                 )}
+                style={{ backgroundColor: "#fff" }}
               />
             </button>
           </td>

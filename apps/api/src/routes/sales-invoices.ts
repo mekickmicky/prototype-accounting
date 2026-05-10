@@ -124,7 +124,7 @@ export const salesInvoiceRoutes = new Elysia({ prefix: '/sales-invoices' })
         customer: true,
         receipt_applications: {
           include: { receipt: { select: { id: true, receipt_no: true, receipt_date: true, total_amount: true } } },
-          orderBy: { created_at: 'asc' },
+          orderBy: { applied_at: 'asc' },
         },
       },
     });

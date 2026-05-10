@@ -203,7 +203,7 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: number; 
           width: 36,
           height: 36,
           borderRadius: 8,
-          background: "rgba(var(--accent-rgb, 184,134,100), 0.12)",
+          background: "rgba(200, 150, 122, 0.12)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

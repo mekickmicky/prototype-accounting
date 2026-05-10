@@ -40,9 +40,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: "General Ledger",
     Icon: BookOpen,
     items: [
-      { label: "Chart of Accounts", href: "/gl/accounts" },
-      { label: "Journal Entries", href: "/gl/journal-entries" },
-      { label: "Periods", href: "/gl/periods" },
+      { label: "Chart of Accounts", href: "/gl/accounts", ready: true },
+      { label: "Journal Entries", href: "/gl/journal-entries", ready: true },
+      { label: "Periods", href: "/gl/periods", ready: true },
     ],
   },
   {
@@ -50,10 +50,10 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Accounts Receivable",
     Icon: FileText,
     items: [
-      { label: "Customers", href: "/ar/customers" },
-      { label: "Sales Invoices", href: "/ar/invoices" },
-      { label: "Receipts", href: "/ar/receipts" },
-      { label: "AR Aging", href: "/ar/aging" },
+      { label: "Customers", href: "/ar/customers", ready: true },
+      { label: "Sales Invoices", href: "/ar/invoices", ready: true },
+      { label: "Receipts", href: "/ar/receipts", ready: true },
+      { label: "AR Aging", href: "/reports/ar-aging", ready: true },
     ],
   },
   {
@@ -61,10 +61,10 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Accounts Payable",
     Icon: CreditCard,
     items: [
-      { label: "Vendors", href: "/ap/vendors" },
-      { label: "Bills", href: "/ap/bills" },
-      { label: "Payments", href: "/ap/payments" },
-      { label: "AP Aging", href: "/ap/aging" },
+      { label: "Vendors", href: "/ap/vendors", ready: true },
+      { label: "Bills", href: "/ap/bills", ready: true },
+      { label: "Payments", href: "/ap/payments", ready: true },
+      { label: "AP Aging", href: "/reports/ap-aging", ready: true },
     ],
   },
   {
@@ -75,8 +75,8 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Dashboard", href: "/tax/dashboard", ready: true },
       { label: "VAT Register", href: "/tax/vat-register" },
       { label: "ภพ.30", href: "/tax/pp30", ready: true },
-      { label: "ภงด.3", href: "/tax/pnd3" },
-      { label: "ภงด.53", href: "/tax/pnd53" },
+      { label: "ภงด.3", href: "/tax/pnd3", ready: true },
+      { label: "ภงด.53", href: "/tax/pnd53", ready: true },
       { label: "Withholding Certs", href: "/tax/wht-certs", ready: true },
     ],
   },
@@ -85,9 +85,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Bank",
     Icon: Landmark,
     items: [
-      { label: "Accounts", href: "/bank/accounts" },
+      { label: "Accounts", href: "/bank/accounts", ready: true },
       { label: "Reconciliation", href: "/bank/reconciliation" },
-      { label: "Import", href: "/bank/import" },
+      { label: "Import", href: "/bank/import", ready: true },
     ],
   },
   {
@@ -95,12 +95,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Reports",
     Icon: BarChart3,
     items: [
-      { label: "Trial Balance", href: "/reports/trial-balance" },
-      { label: "P&L", href: "/reports/pl" },
-      { label: "Balance Sheet", href: "/reports/balance-sheet" },
-      { label: "Cash Flow", href: "/reports/cash-flow" },
-      { label: "General Ledger", href: "/reports/general-ledger" },
-      { label: "Branch P&L", href: "/reports/branch-pl" },
+      { label: "Trial Balance", href: "/reports/trial-balance", ready: true },
+      { label: "P&L", href: "/reports/profit-loss", ready: true },
+      { label: "Balance Sheet", href: "/reports/balance-sheet", ready: true },
+      { label: "Cash Flow", href: "/reports/cash-flow", ready: true },
+      { label: "General Ledger", href: "/reports/general-ledger", ready: true },
+      { label: "Branch P&L", href: "/reports/branch-pnl", ready: true },
     ],
   },
   {
@@ -118,7 +118,7 @@ const NAV_GROUPS: NavGroup[] = [
     Icon: Settings2,
     items: [
       { label: "Company", href: "/settings/company" },
-      { label: "Account Map", href: "/settings/account-map" },
+      { label: "Account Map", href: "/settings/account-map", ready: true },
       { label: "Users", href: "/settings/users" },
       { label: "Audit Log", href: "/settings/audit-log", ready: true },
     ],
@@ -252,7 +252,7 @@ function NavItem({ item, isActive }: NavItemProps) {
     borderLeft: isActive
       ? "3px solid var(--accent)"
       : "3px solid transparent",
-    background: isActive ? "var(--bg-hover)" : "transparent",
+    background: isActive ? "rgba(200, 150, 122, 0.18)" : "transparent",
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -278,7 +278,7 @@ function NavItem({ item, isActive }: NavItemProps) {
       href={item.href}
       style={{
         ...sharedStyle,
-        color: isActive ? "var(--text-primary)" : "var(--text-muted)",
+        color: isActive ? "var(--accent)" : "var(--text-muted)",
         textDecoration: "none",
       }}
       onMouseEnter={(e) => {

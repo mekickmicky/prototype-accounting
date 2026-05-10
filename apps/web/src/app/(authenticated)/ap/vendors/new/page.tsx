@@ -159,7 +159,7 @@ export default function NewVendorPage() {
           <div
             style={{
               padding: "8px 12px",
-              background: "rgba(var(--accent-rgb, 180,140,100),0.08)",
+              background: "rgba(200, 150, 122, 0.1)",
               border: "1px solid var(--border)",
               borderRadius: 5,
               fontSize: 11,
@@ -204,7 +204,7 @@ export default function NewVendorPage() {
                       padding: "6px 12px",
                       borderRadius: 4,
                       border: `1px solid ${vendorType === opt.value ? "var(--accent)" : "var(--border-strong)"}`,
-                      background: vendorType === opt.value ? "rgba(var(--accent-rgb,180,140,100),0.08)" : "transparent",
+                      background: vendorType === opt.value ? "rgba(200, 150, 122, 0.2)" : "transparent",
                     }}
                   >
                     <input
@@ -451,6 +451,7 @@ export default function NewVendorPage() {
             </button>
             <button
               type="submit"
+              data-testid="action-submit"
               disabled={submitting}
               style={{
                 display: "inline-flex",

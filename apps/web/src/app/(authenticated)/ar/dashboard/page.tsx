@@ -6,7 +6,7 @@ import { Plus, Loader2, AlertTriangle, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import Decimal from "decimal.js";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -178,10 +178,10 @@ export default function ARDashboardPage() {
       setError(null);
       try {
         const [invRes, overdueRes, recentRes, receiptRes, agingRes] = await Promise.all([
-          fetch(`${API_BASE}/api/v1/sales-invoices?period=${period}&page_size=200&page=1`, { credentials: "include" }),
+          fetch(`${API_BASE}/api/v1/sales-invoices?period=${period}&page_size=100&page=1`, { credentials: "include" }),
           fetch(`${API_BASE}/api/v1/sales-invoices?overdue=true&page_size=1&page=1`, { credentials: "include" }),
           fetch(`${API_BASE}/api/v1/sales-invoices?page_size=5&page=1`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/v1/receipts?period=${period}&status=POSTED&page_size=200&page=1`, { credentials: "include" }),
+          fetch(`${API_BASE}/api/v1/receipts?period=${period}&status=POSTED&page_size=100&page=1`, { credentials: "include" }),
           fetch(`${API_BASE}/api/v1/reports/ar-aging?as_of=${today}&branch=ALL&format=json`, { credentials: "include" }),
         ]);
 

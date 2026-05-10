@@ -72,7 +72,7 @@ export default function PP30ListPage() {
     setError(null);
     const qs = new URLSearchParams({ type: "PP30", page: String(page), page_size: String(PAGE_SIZE) });
     apiClient
-      .get<ListResponse>(`/api/v1/tax-filings?${qs}`)
+      .getPaged<TaxFiling[]>(`/api/v1/tax-filings?${qs}`)
       .then((res) => {
         setFilings(res.data ?? []);
         setTotal(res.meta?.total ?? 0);

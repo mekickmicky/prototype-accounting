@@ -105,6 +105,9 @@ export const journalEntryRoutes = new Elysia({ prefix: '/journal-entries' })
 
   // POST /journal-entries — create DRAFT
   .post('', async ({ user, body, set }) => {
+    if (user.role === 'VIEWER') {
+      throw new BusinessRuleError('FORBIDDEN', { required_roles: ['ADMIN', 'ACCOUNTANT'] });
+    }
     const parsed = CreateJEBody.safeParse(body);
     if (!parsed.success) {
       throw new BusinessRuleError('VALIDATION_ERROR', { issues: parsed.error.issues });

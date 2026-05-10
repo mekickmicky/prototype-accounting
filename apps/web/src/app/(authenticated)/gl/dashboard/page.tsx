@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { MoneyDisplay } from "@/components/ui/money-display";
 import { StatusBadge, type DocumentStatus } from "@/components/ui/status-badge";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

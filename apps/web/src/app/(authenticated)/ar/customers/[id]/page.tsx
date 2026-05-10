@@ -7,7 +7,7 @@ import { ApiError } from "@/lib/api-client";
 import Decimal from "decimal.js";
 import { CustomerStatement } from "@/components/ar/customer-statement";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 interface CustomerDetail {
   id: string;

@@ -189,7 +189,7 @@ export function CustomerPicker({
                       "flex w-full items-center gap-2 px-2.5 py-1.5",
                       "text-left hover:bg-[--bg-hover]",
                       "transition-colors duration-[100ms]",
-                      c.id === value && "bg-[--bg-hover]"
+                      c.id === value && "!bg-[rgba(200,150,122,0.15)]"
                     )}
                   >
                     <Check

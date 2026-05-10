@@ -8,7 +8,7 @@ import Decimal from "decimal.js";
 import { ApiError } from "@/lib/api-client";
 import { format } from "date-fns";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 type PaymentStatus = "DRAFT" | "POSTED" | "VOID";
 type PaymentMethod = "CASH" | "TRANSFER" | "CREDIT_CARD" | "DEBIT_CARD" | "QR" | "CHEQUE" | "OTHER";
@@ -45,7 +45,7 @@ interface Payment {
     name_th: string | null;
     tax_id: string | null;
   };
-  bank_account: { id: string; account_name: string; account_no: string } | null;
+  bank_account: { id: string; name: string; account_number: string | null } | null;
   branch_code: string;
   payment_date: string;
   total_amount: string;
@@ -271,6 +271,7 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
               {payment.payment_no}
             </h1>
             <span
+              data-testid="status-badge"
               style={{
                 display: "inline-block",
                 padding: "2px 9px",
@@ -285,24 +286,48 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
             </span>
           </div>
         </div>
-        <button
-          onClick={() => router.push("/ap/payments")}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            fontSize: 12,
-            color: "var(--text-muted)",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            marginTop: 4,
-          }}
-        >
-          <ArrowLeft size={12} />
-          Back
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+          {payment.status === "POSTED" && (
+            <a
+              data-testid="action-export-pdf"
+              href={`${API_BASE}/api/v1/payments/${id}/pdf`}
+              download
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "5px 12px",
+                fontSize: 12,
+                borderRadius: 4,
+                border: "1px solid var(--border-strong)",
+                background: "transparent",
+                color: "var(--text-primary)",
+                textDecoration: "none",
+                fontFamily: "inherit",
+              }}
+            >
+              <Download size={12} />
+              Payment Voucher PDF
+            </a>
+          )}
+          <button
+            onClick={() => router.push("/ap/payments")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              fontSize: 12,
+              color: "var(--text-muted)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            <ArrowLeft size={12} />
+            Back
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 16, alignItems: "start" }}>
@@ -505,7 +530,7 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
                 payment.vendor.tax_id ? { label: "Tax ID", value: <span style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{payment.vendor.tax_id}</span> } : null,
                 { label: "วิธีชำระ", value: PM_LABELS[payment.payment_method] ?? payment.payment_method },
                 payment.bank_account
-                  ? { label: "บัญชีธนาคาร", value: `${payment.bank_account.account_name} (${payment.bank_account.account_no})` }
+                  ? { label: "บัญชีธนาคาร", value: `${payment.bank_account.name} (${payment.bank_account.account_number ?? '—'})` }
                   : null,
                 payment.cheque_no ? { label: "เลขที่เช็ค", value: <span style={{ fontFamily: "var(--font-mono)" }}>{payment.cheque_no}</span> } : null,
               ]

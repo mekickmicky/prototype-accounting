@@ -1,6 +1,7 @@
 import type { AccountType, JESourceType, Prisma } from '@prisma/client';
 import { D, type Decimal } from '@wind-acc/shared';
 import { prisma } from '../prisma';
+import { BusinessRuleError } from '../errors';
 import { type BranchFilter, branchClause, dateRangeForPeriod } from './common';
 
 type Db = Prisma.TransactionClient | typeof prisma;
@@ -90,7 +91,8 @@ export async function generalLedger(
   const periodStart = period_from ? dateRangeForPeriod(period_from).start : null;
   const periodEnd = period_to ? dateRangeForPeriod(period_to).end : null;
 
-  const account = await client.account.findUniqueOrThrow({ where: { code: account_code } });
+  const account = await client.account.findUnique({ where: { code: account_code } });
+  if (!account) throw new BusinessRuleError('ACCOUNT_NOT_FOUND', { account_code });
 
   const lineFilter = branchClause(branch);
 

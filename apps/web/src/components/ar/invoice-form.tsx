@@ -19,7 +19,7 @@ type VatRate = "7" | "0" | "EXEMPT";
 interface FormLine {
   _key: string;
   description: string;
-  service_code: string | null;
+  service_code?: string;
   qty: string;
   unit_price: string;
   discount: string;
@@ -32,12 +32,11 @@ function newLine(): FormLine {
   return {
     _key: crypto.randomUUID(),
     description: "",
-    service_code: null,
     qty: "1",
     unit_price: "0.00",
     discount: "0.00",
     vat_rate: "7",
-    revenue_account_code: "4100",
+    revenue_account_code: "41010",
     wht_rate: "0",
   };
 }
@@ -53,7 +52,7 @@ export interface InvoiceSubmitValues {
   source_ref: string;
   lines: Array<{
     description: string;
-    service_code: string | null;
+    service_code?: string;
     qty: string;
     unit_price: string;
     discount: string;
@@ -146,14 +145,17 @@ function TotalRow({
   value,
   bold,
   dimmed,
+  testId,
 }: {
   label: string;
   value: string;
   bold?: boolean;
   dimmed?: boolean;
+  testId?: string;
 }) {
   return (
     <div
+      data-testid={testId}
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -172,6 +174,7 @@ function TotalRow({
 }
 
 interface LineRowProps {
+  index: number;
   line: FormLine;
   vatInclusive: boolean;
   onServiceSelect: (code: string | null, svc: CatalogService | null) => void;
@@ -180,7 +183,7 @@ interface LineRowProps {
   canRemove: boolean;
 }
 
-function LineRow({ line, vatInclusive, onServiceSelect, onChange, onRemove, canRemove }: LineRowProps) {
+function LineRow({ index, line, vatInclusive, onServiceSelect, onChange, onRemove, canRemove }: LineRowProps) {
   const lineTotal = React.useMemo(() => {
     try {
       const net = calcLineNet({
@@ -211,6 +214,7 @@ function LineRow({ line, vatInclusive, onServiceSelect, onChange, onRemove, canR
       {/* Description */}
       <td style={{ ...cellStyle, minWidth: 140 }}>
         <input
+          data-testid={`field-description-${index}`}
           type="text"
           value={line.description}
           onChange={(e) => onChange({ description: e.target.value })}
@@ -222,6 +226,7 @@ function LineRow({ line, vatInclusive, onServiceSelect, onChange, onRemove, canR
       {/* Qty */}
       <td style={{ ...cellStyle, width: 64 }}>
         <input
+          data-testid={`field-qty-${index}`}
           type="number"
           value={line.qty}
           onChange={(e) => onChange({ qty: e.target.value })}
@@ -234,6 +239,7 @@ function LineRow({ line, vatInclusive, onServiceSelect, onChange, onRemove, canR
       {/* Unit price */}
       <td style={{ ...cellStyle, width: 90 }}>
         <input
+          data-testid={`field-unit-price-${index}`}
           type="number"
           value={line.unit_price}
           onChange={(e) => onChange({ unit_price: e.target.value })}
@@ -258,6 +264,7 @@ function LineRow({ line, vatInclusive, onServiceSelect, onChange, onRemove, canR
       {/* VAT rate */}
       <td style={{ ...cellStyle, width: 80 }}>
         <select
+          data-testid={`field-vat-rate-${index}`}
           value={line.vat_rate}
           onChange={(e) => onChange({ vat_rate: e.target.value as VatRate })}
           style={{ ...INPUT, width: 80, cursor: "pointer", paddingLeft: 6 }}
@@ -289,6 +296,7 @@ function LineRow({ line, vatInclusive, onServiceSelect, onChange, onRemove, canR
       {/* Delete */}
       <td style={{ ...cellStyle, width: 28, textAlign: "center" }}>
         <button
+          data-testid={`action-remove-line-${index}`}
           type="button"
           onClick={onRemove}
           disabled={!canRemove}
@@ -370,7 +378,7 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
           vat_rate: l.vat_rate,
           vat_inclusive: vatInclusive,
         });
-        const code = l.revenue_account_code || "4100";
+        const code = l.revenue_account_code || "41010";
         revenueMap.set(code, (revenueMap.get(code) ?? D(0)).plus(lineNetAmt));
       } catch {
         // skip malformed line
@@ -418,7 +426,7 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
         revenue_account_code: svc.default_revenue_account_code,
       });
     } else {
-      updateLine(key, { service_code: null });
+      updateLine(key, { service_code: undefined });
     }
   }
 
@@ -458,7 +466,7 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
       source_ref: sourceRef.trim(),
       lines: lines.map((l) => ({
         description: l.description,
-        service_code: l.service_code ?? null,
+        service_code: l.service_code || undefined,
         qty: l.qty || "1",
         unit_price: l.unit_price || "0",
         discount: l.discount || "0",
@@ -524,10 +532,12 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={LABEL}>ลูกค้า *</label>
-                <CustomerPicker
-                  value={customerId}
-                  onChange={(id) => setCustomerId(id)}
-                />
+                <div data-testid="field-customer">
+                  <CustomerPicker
+                    value={customerId}
+                    onChange={(id) => setCustomerId(id)}
+                  />
+                </div>
               </div>
 
               <div>
@@ -597,6 +607,7 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
                 รายการสินค้า/บริการ
               </h3>
               <button
+                data-testid="action-add-line"
                 type="button"
                 onClick={addLine}
                 style={{
@@ -634,9 +645,10 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((line) => (
+                  {lines.map((line, index) => (
                     <LineRow
                       key={line._key}
+                      index={index}
                       line={line}
                       vatInclusive={vatInclusive}
                       onServiceSelect={(code, svc) => handleServiceSelect(line._key, code, svc)}
@@ -716,6 +728,7 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
               ยกเลิก
             </button>
             <button
+              data-testid="action-submit"
               type="button"
               onClick={() => submit(onSaveDraft)}
               disabled={saving}
@@ -737,6 +750,7 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
               บันทึกร่าง (Draft)
             </button>
             <button
+              data-testid="action-post"
               type="button"
               onClick={() => submit(onPost)}
               disabled={saving}
@@ -789,9 +803,9 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
                     dimmed
                   />
                 )}
-                <TotalRow label="ราคาหลังส่วนลด" value={formatTHB(totals.subtotal)} />
+                <TotalRow testId="total-subtotal" label="ราคาหลังส่วนลด" value={formatTHB(totals.subtotal)} />
                 <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                <TotalRow label={`VAT${vatInclusive ? " (รวมแล้ว)" : " 7%"}`} value={formatTHB(totals.vat_total)} />
+                <TotalRow testId="total-vat" label={`VAT${vatInclusive ? " (รวมแล้ว)" : " 7%"}`} value={formatTHB(totals.vat_total)} />
                 {!totals.withholding_total.isZero() && (
                   <TotalRow
                     label="หัก ณ ที่จ่าย (WHT)"
@@ -800,7 +814,7 @@ export function InvoiceForm({ defaultValues, onSaveDraft, onPost, onCancel }: In
                   />
                 )}
                 <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                <TotalRow label="ยอดรวมสุทธิ" value={formatTHB(totals.total)} bold />
+                <TotalRow testId="total-grand" label="ยอดรวมสุทธิ" value={formatTHB(totals.total)} bold />
               </div>
             ) : (
               <p style={{ fontSize: 12, color: "var(--text-dim)", margin: 0 }}>

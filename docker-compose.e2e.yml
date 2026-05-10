@@ -1,0 +1,17 @@
+services:
+  postgres-e2e:
+    image: postgres:16-alpine
+    container_name: wind-acc-postgres-e2e
+    environment:
+      POSTGRES_USER: wind
+      POSTGRES_PASSWORD: wind_dev
+      POSTGRES_DB: wind_e2e_w0
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./scripts/e2e-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wind -d wind_e2e_w0"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

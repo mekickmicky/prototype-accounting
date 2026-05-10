@@ -4,6 +4,7 @@ import { signSession, COOKIE_NAME } from '../lib/auth';
 import { authGuard } from '../middleware/auth-guard';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
+const CROSS_ORIGIN = !!process.env.CORS_ORIGIN;
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days in seconds
 
 const internalError = {
@@ -48,8 +49,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       cookie[COOKIE_NAME].value = token;
       cookie[COOKIE_NAME].httpOnly = true;
-      cookie[COOKIE_NAME].secure = IS_PROD;
-      cookie[COOKIE_NAME].sameSite = 'Lax';
+      cookie[COOKIE_NAME].secure = IS_PROD || CROSS_ORIGIN;
+      cookie[COOKIE_NAME].sameSite = CROSS_ORIGIN ? 'None' : 'Lax';
       cookie[COOKIE_NAME].path = '/';
       cookie[COOKIE_NAME].maxAge = SESSION_MAX_AGE;
 

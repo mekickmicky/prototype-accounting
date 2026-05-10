@@ -35,9 +35,10 @@ export async function listAccounts(filters: AccountFilters = {}): Promise<Accoun
 
   const accounts = await db.account.findMany({ where, orderBy: { code: 'asc' } });
 
-  const lineWhere: Prisma.JournalLineWhereInput = { je: { status: 'POSTED' } };
+  // Include VOID JE lines so that a voided JE + its reversal net to zero.
+  const lineWhere: Prisma.JournalLineWhereInput = { je: { status: { in: ['POSTED', 'VOID'] } } };
   if (filters.period_code) {
-    lineWhere.je = { status: 'POSTED', period_code: filters.period_code };
+    lineWhere.je = { status: { in: ['POSTED', 'VOID'] }, period_code: filters.period_code };
   }
 
   const aggregates = await db.journalLine.groupBy({
@@ -97,8 +98,17 @@ export async function getAccount(code: string): Promise<AccountDetail | null> {
     take: 20,
   });
 
+  const agg = await db.journalLine.aggregate({
+    where: { account_code: code, je: { status: { in: ['POSTED', 'VOID'] } } },
+    _sum: { debit: true, credit: true },
+  });
+  const current_balance = D(agg._sum.debit?.toString() ?? '0')
+    .minus(D(agg._sum.credit?.toString() ?? '0'))
+    .toFixed(2);
+
   return {
     ...account,
+    current_balance,
     parent_chain: parentChain,
     recent_lines: recentLines,
   };

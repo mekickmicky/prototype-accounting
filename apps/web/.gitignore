@@ -15,10 +15,18 @@
 
 # next.js
 /.next/
+/.next-w0/
+/.next-w1/
+/.next-w2/
 /out/
 
 # production
 /build
+
+# playwright / e2e
+/test-results/
+/playwright-report/
+/e2e-run-summary.txt
 
 # misc
 .DS_Store

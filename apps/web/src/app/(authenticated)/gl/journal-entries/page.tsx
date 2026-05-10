@@ -17,7 +17,7 @@ import { BranchPicker } from "@/components/ui/branch-picker";
 import { PeriodPicker, PeriodOption } from "@/components/ui/period-picker";
 import { EmptyState } from "@/components/ui/empty-state";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

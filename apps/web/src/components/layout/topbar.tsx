@@ -164,6 +164,7 @@ function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          data-testid="user-menu-trigger"
           style={{
             display: "flex",
             alignItems: "center",

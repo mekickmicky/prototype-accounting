@@ -4,6 +4,7 @@ import type { CreateSalesInvoiceBodyType, UpdateSalesInvoiceBodyType } from '@wi
 import { prisma as db } from '../lib/prisma';
 import { BusinessRuleError } from '../lib/errors';
 import { logAuditEvent } from './audit-log';
+import { toUserFk } from '../lib/actor';
 import { assertPostable } from './account';
 import {
   createDraft as jeCreateDraft,
@@ -439,7 +440,7 @@ export async function post(
         status: 'POSTED',
         je_id: postedJe.id,
         posted_at: new Date(),
-        posted_by_id: actor_id,
+        posted_by_id: toUserFk(actor_id),
       },
       include: { lines: { orderBy: { line_no: 'asc' } } },
     });
@@ -549,7 +550,7 @@ export async function voidInvoice(
       data: {
         status: 'VOID',
         voided_at: new Date(),
-        voided_by_id: actor_id,
+        voided_by_id: toUserFk(actor_id),
         void_reason: reason,
       },
       include: { lines: { orderBy: { line_no: 'asc' } } },

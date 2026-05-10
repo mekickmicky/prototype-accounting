@@ -4,6 +4,7 @@ import { D, sumD, type Decimal } from '@wind-acc/shared';
 import { prisma } from '../lib/prisma';
 import { BusinessRuleError } from '../lib/errors';
 import { logAuditEvent } from './audit-log';
+import { toUserFk } from '../lib/actor';
 import { assertPostable } from './account';
 import { assertOpen, derivePeriodCode, ensurePeriodExists } from './period';
 import { nextDocNo } from './numbering';
@@ -416,7 +417,7 @@ export async function postInTx(
       period_code,
       status: 'POSTED',
       posted_at: new Date(),
-      posted_by_id: actor_id,
+      posted_by_id: toUserFk(actor_id),
       total_debit: totalDebit.toFixed(2),
       total_credit: totalCredit.toFixed(2),
     },
@@ -533,7 +534,7 @@ export async function voidEntryInTx(
       data: {
         status: 'VOID',
         voided_at: new Date(),
-        voided_by_id: actor_id,
+        voided_by_id: toUserFk(actor_id),
         void_reason: reason,
       },
       include: { lines: { orderBy: { line_no: 'asc' } } },

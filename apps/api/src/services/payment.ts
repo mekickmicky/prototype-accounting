@@ -3,6 +3,7 @@ import { D, lineNet, lineVat, WHT_THRESHOLD } from '@wind-acc/shared';
 import { prisma as db } from '../lib/prisma';
 import { BusinessRuleError } from '../lib/errors';
 import { logAuditEvent } from './audit-log';
+import { toUserFk } from '../lib/actor';
 import {
   createDraft as jeCreateDraft,
   postInTx as jePostInTx,
@@ -548,7 +549,7 @@ export async function voidPayment(
       data: {
         status: 'VOID',
         voided_at: new Date(),
-        voided_by_id: actor_id,
+        voided_by_id: toUserFk(actor_id),
         void_reason: reason,
       },
       include: { applications: true },

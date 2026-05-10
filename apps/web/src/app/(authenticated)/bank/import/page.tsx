@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Upload, X, Loader2, Eye, ChevronDown, Landmark } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 interface BankAccount {
   id: string;

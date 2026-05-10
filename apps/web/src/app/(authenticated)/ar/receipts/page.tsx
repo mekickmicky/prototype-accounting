@@ -114,7 +114,7 @@ export default function ReceiptsPage() {
         if (opts.period) qs.set("period", opts.period);
         if (opts.dateFrom) qs.set("date_from", opts.dateFrom);
         if (opts.dateTo) qs.set("date_to", opts.dateTo);
-        const result = await apiClient.get<ListResponse>(`/api/v1/receipts?${qs}`);
+        const result = await apiClient.getPaged<Receipt[]>(`/api/v1/receipts?${qs}`);
         setReceipts(result.data ?? []);
         setTotal(result.meta?.total ?? 0);
       } catch (err) {

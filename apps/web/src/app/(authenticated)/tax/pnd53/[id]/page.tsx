@@ -83,7 +83,7 @@ function fmtPeriod(code: string): string {
 }
 
 function fmtPct(rate: string): string {
-  return `${new Decimal(rate).times(100).toFixed(0)}%`;
+  return `${new Decimal(rate).toFixed(0)}%`;
 }
 
 const TH: React.CSSProperties = {
@@ -238,7 +238,7 @@ export default function PND53DetailPage() {
   const totalWht = new Decimal(filing.withholding_total ?? 0);
 
   const pdfUrl = `/api/v1/tax-filings/${filingId}/pdf`;
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  const API_BASE = "";
 
   return (
     <div>
@@ -253,6 +253,7 @@ export default function PND53DetailPage() {
         actions={
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <a
+              data-testid="action-export-pdf"
               href={`${API_BASE}${pdfUrl}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -541,7 +542,7 @@ export default function PND53DetailPage() {
           }}
         >
           <span>ภาษีหัก ณ ที่จ่าย · Total WHT Payable</span>
-          <span style={{ fontFamily: "var(--font-mono)", textAlign: "right" }}>
+          <span data-testid="total-withholding" style={{ fontFamily: "var(--font-mono)", textAlign: "right" }}>
             ฿{fmtMoney(totalWht.toFixed(2))}
           </span>
         </div>

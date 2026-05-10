@@ -8,7 +8,7 @@ import { VendorPicker, type VendorOption } from "@/components/ui/vendor-picker";
 import { ApiError } from "@/lib/api-client";
 import { format } from "date-fns";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 type PaymentMethod = "CASH" | "TRANSFER" | "CREDIT_CARD" | "DEBIT_CARD" | "QR" | "CHEQUE" | "OTHER";
 
@@ -151,6 +151,13 @@ function NewPaymentForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const billsMap = Object.fromEntries(bills.map((b) => [b.id, b]));
+  const computedWht = Object.entries(selectedBills).reduce((acc, [billId]) => {
+    const bill = billsMap[billId];
+    return bill ? acc.plus(bill.withholding_total) : acc;
+  }, new Decimal(0));
+  const netTransfer = new Decimal(totalAmount || "0").minus(computedWht).toDecimalPlaces(2);
 
   useEffect(() => {
     apiReq<BankAccount[]>("/api/v1/bank-accounts")
@@ -337,14 +344,16 @@ function NewPaymentForm() {
             <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid var(--border)" }}>
               เจ้าหนี้ · Vendor
             </div>
-            <VendorPicker
-              value={vendorId}
-              onChange={(id: string | null, _vendor: VendorOption | null) => {
-                setVendorId(id);
-                if (errors.vendor) setErrors((p) => ({ ...p, vendor: "" }));
-              }}
-              disabled={saving}
-            />
+            <div data-testid="field-vendor">
+              <VendorPicker
+                value={vendorId}
+                onChange={(id: string | null, _vendor: VendorOption | null) => {
+                  setVendorId(id);
+                  if (errors.vendor) setErrors((p) => ({ ...p, vendor: "" }));
+                }}
+                disabled={saving}
+              />
+            </div>
             {errors.vendor && (
               <div style={{ fontSize: 11, color: "var(--error)", marginTop: 4 }}>{errors.vendor}</div>
             )}
@@ -386,7 +395,7 @@ function NewPaymentForm() {
                         const bal = new Decimal(bill.net_payable).minus(bill.paid_amount).toNumber();
                         const checked = bill.id in selectedBills;
                         return (
-                          <tr key={bill.id} style={{ background: checked ? "rgba(100,140,220,0.05)" : "transparent" }}>
+                          <tr key={bill.id} data-testid="data-table-row" data-row-id={bill.id} style={{ background: checked ? "rgba(100,140,220,0.05)" : "transparent" }}>
                             <td style={TD}>
                               <input
                                 type="checkbox"
@@ -469,7 +478,7 @@ function NewPaymentForm() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <label style={LABEL}>วันที่จ่ายเงิน *</label>
-                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} style={INPUT} required />
+                <input data-testid="field-payment-date" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} style={INPUT} required />
               </div>
 
               <div>
@@ -484,6 +493,7 @@ function NewPaymentForm() {
               <div>
                 <label style={LABEL}>วิธีชำระเงิน *</label>
                 <select
+                  data-testid="field-payment-method"
                   value={paymentMethod}
                   onChange={(e) => {
                     setPaymentMethod(e.target.value as PaymentMethod);
@@ -501,7 +511,7 @@ function NewPaymentForm() {
               {paymentMethod !== "CASH" && (
                 <div>
                   <label style={LABEL}>บัญชีธนาคาร *</label>
-                  <select value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)} style={SELECT}>
+                  <select data-testid="field-bank-account" value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)} style={SELECT}>
                     <option value="">เลือกบัญชี...</option>
                     {bankAccounts.map((ba) => (
                       <option key={ba.id} value={ba.id}>{ba.name}</option>
@@ -524,8 +534,9 @@ function NewPaymentForm() {
               )}
 
               <div>
-                <label style={LABEL}>ยอดจ่ายรวม *</label>
+                <label style={LABEL}>ยอดจ่ายรวม (Gross) *</label>
                 <input
+                  data-testid="field-total-amount"
                   type="number"
                   value={totalAmount}
                   onChange={(e) => { handleTotalChange(e.target.value); if (errors.totalAmount) setErrors((p) => ({ ...p, totalAmount: "" })); }}
@@ -537,6 +548,23 @@ function NewPaymentForm() {
                   <div style={{ fontSize: 11, color: "var(--error)", marginTop: 3 }}>{errors.totalAmount}</div>
                 )}
               </div>
+
+              {computedWht.gt(0) && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 10px", background: "rgba(200,160,60,0.08)", borderRadius: 4, fontSize: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--text-muted)" }}>หัก WHT</span>
+                    <span data-testid="total-wht" style={{ fontFamily: "var(--font-mono)", color: "#C8A03C" }}>
+                      ({computedWht.toDecimalPlaces(2).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')})
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                    <span style={{ color: "var(--text-primary)" }}>สุทธิโอน</span>
+                    <span data-testid="total-net-transfer" style={{ fontFamily: "var(--font-mono)", color: "#6CB278" }}>
+                      {netTransfer.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label style={LABEL}>หมายเหตุ</label>
@@ -569,6 +597,7 @@ function NewPaymentForm() {
 
           <div style={{ display: "flex", gap: 8 }}>
             <button
+              data-testid="action-save-draft"
               onClick={handleSaveDraft}
               disabled={saving}
               style={{
@@ -588,6 +617,7 @@ function NewPaymentForm() {
               {" "}Save Draft
             </button>
             <button
+              data-testid="action-submit"
               onClick={handlePost}
               disabled={saving}
               style={{

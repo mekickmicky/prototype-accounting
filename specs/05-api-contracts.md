@@ -132,7 +132,7 @@ Creates DRAFT.
   entry_date: z.string().date(),
   branch_code: z.string(),
   description: z.string().min(1),
-  source_type: z.enum(['MANUAL', 'ADJUSTMENT', ...]),
+  source_type: z.enum(['MANUAL', 'ADJUSTMENT', ...]),  // Required: use "MANUAL" for manual entries
   source_id: z.string().optional(),
   lines: z.array(z.object({
     account_code: z.string(),
@@ -144,6 +144,20 @@ Creates DRAFT.
     dim_project: z.string().optional(),
     dim_doctor_id: z.string().optional(),
   })).min(2),
+}
+```
+
+Example request body:
+```json
+{
+  "entry_date": "2026-05-09",
+  "branch_code": "TL",
+  "description": "Manual journal entry",
+  "source_type": "MANUAL",
+  "lines": [
+    { "account_code": "11010", "debit": "1000.00" },
+    { "account_code": "51000", "credit": "1000.00" }
+  ]
 }
 ```
 
@@ -244,12 +258,32 @@ Query: `?customer_id=...&status=POSTED&overdue=true&period=2026-05`
     description: z.string().min(1),
     service_code: z.string().optional(),
     product_code: z.string().optional(),
-    qty: z.string().default('1'),
+    qty: z.string().default('1'),  // Must be string: "1", not number 1
     unit_price: z.string(),
     discount: z.string().default('0'),
     vat_rate: z.string().default('7'),
-    revenue_account_code: z.string(),
+    revenue_account_code: z.string(),  // Use a postable leaf account code (e.g., 41100, not header 41000)
   })).min(1),
+}
+```
+
+Example request body:
+```json
+{
+  "customer_id": "cmoy5n0bb0000qcoaojfd31tb",
+  "branch_code": "TL",
+  "issue_date": "2026-05-09",
+  "due_date": "2026-06-08",
+  "is_tax_invoice": true,
+  "vat_inclusive": true,
+  "lines": [
+    {
+      "description": "Professional service",
+      "qty": "1",
+      "unit_price": "1000.00",
+      "revenue_account_code": "41100"
+    }
+  ]
 }
 ```
 
@@ -408,10 +442,40 @@ Returns: unmatched bank txns, unmatched documents, suggestions.
 }
 ```
 
+### POST `/bank/unmatch`
+```ts
+{
+  bank_txn_id: z.string(),
+  reason: z.string().optional(),
+}
+```
+Clears reconciliation link between bank transaction and document.
+
 ### POST `/bank/ignore-txn`
 ```ts
 { bank_txn_id: z.string(), reason: z.string().optional() }
 ```
+Marks bank transaction as IGNORED (excluded from reconciliation).
+
+### POST `/bank/create-je-from-txn`
+```ts
+{
+  bank_txn_id: z.string(),
+  je: {
+    entry_date: z.string().date(),
+    branch_code: z.string(),
+    description: z.string(),
+    lines: z.array({
+      account_code: z.string(),
+      branch_code?: z.string(),
+      debit?: z.string(),
+      credit?: z.string(),
+      description?: z.string(),
+    }).min(2),
+  },
+}
+```
+Creates and posts a JE from an unmatched bank transaction.
 
 ### POST `/bank/verify-slip`  (mock)
 ```ts
@@ -419,6 +483,7 @@ Returns: unmatched bank txns, unmatched documents, suggestions.
 // Response (mock)
 { verified: true, sender: '...', amount: '...', date: '...' }
 ```
+Mock endpoint for bank slip verification.
 
 ---
 
@@ -427,24 +492,33 @@ Returns: unmatched bank txns, unmatched documents, suggestions.
 ### GET `/reports/trial-balance?as_of=2026-05-31&branch=TL`
 Returns array of accounts with debit_total, credit_total, balance, plus grand totals.
 
-### GET `/reports/profit-loss?period_from=2026-01&period_to=2026-05&branch=ALL`
+### GET `/reports/profit-loss?period_from=2026-01&period_to=2026-05&branch=ALL&comparative=true`
 Returns nested structure: revenue accounts, expense accounts, net income.
+Parameters: `period_from`, `period_to` (YYYY-MM format), `branch` (branch code or ALL), `comparative` (optional boolean).
 
 ### GET `/reports/balance-sheet?as_of=2026-05-31`
 Asset / Liability / Equity sections.
 
 ### GET `/reports/cash-flow?period_from=2026-01&period_to=2026-05`
 Operating / Investing / Financing sections (indirect method).
+Parameters: `period_from`, `period_to` (YYYY-MM format).
 
-### GET `/reports/general-ledger?account=11020&period=2026-05`
+### GET `/reports/general-ledger?account=11020&period_from=2026-01&period_to=2026-05`
 Per-account transaction list with running balance.
+Parameters: `account` (account code), `period_from`, `period_to` (YYYY-MM format).
 
 ### GET `/reports/ar-aging?as_of=2026-05-31`
 Per-customer aging buckets.
 
 ### GET `/reports/ap-aging?as_of=2026-05-31`
 
-### GET `/reports/branch-pnl?period=2026-05`
+### GET `/reports/vat-summary?period_from=2026-01&period_to=2026-05`
+VAT input/output summary by period.
+Parameters: `period_from`, `period_to` (YYYY-MM format).
+
+### GET `/reports/branch-pnl?period_from=2026-01&period_to=2026-05`
+Profit & Loss by branch.
+Parameters: `period_from`, `period_to` (YYYY-MM format).
 
 All reports support `?format=pdf|csv|xlsx` for export.
 

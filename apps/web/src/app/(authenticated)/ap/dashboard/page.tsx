@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Plus, Loader2, AlertTriangle, CreditCard } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -178,10 +178,10 @@ export default function APDashboardPage() {
       setError(null);
       try {
         const [billsRes, overdueRes, recentRes, paymentsRes, agingRes] = await Promise.all([
-          fetch(`${API_BASE}/api/v1/bills?period=${period}&page_size=200&page=1`, { credentials: "include" }),
+          fetch(`${API_BASE}/api/v1/bills?period=${period}&page_size=100&page=1`, { credentials: "include" }),
           fetch(`${API_BASE}/api/v1/bills?overdue=true&page_size=1&page=1`, { credentials: "include" }),
           fetch(`${API_BASE}/api/v1/bills?page_size=5&page=1`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/v1/payments?period=${period}&status=POSTED&page_size=200&page=1`, { credentials: "include" }),
+          fetch(`${API_BASE}/api/v1/payments?period=${period}&status=POSTED&page_size=100&page=1`, { credentials: "include" }),
           fetch(`${API_BASE}/api/v1/reports/ap-aging?as_of=${today}&branch=ALL&format=json`, { credentials: "include" }),
         ]);
 

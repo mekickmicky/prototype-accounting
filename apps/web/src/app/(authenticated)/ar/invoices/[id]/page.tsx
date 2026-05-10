@@ -8,7 +8,7 @@ import { InvoiceForm, type InvoiceSubmitValues } from "@/components/ar/invoice-f
 import { ApiError } from "@/lib/api-client";
 import Decimal from "decimal.js";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 type InvoiceStatus = "DRAFT" | "POSTED" | "PARTIAL_PAID" | "PAID" | "VOID";
 
@@ -276,6 +276,7 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
               {invoice.invoice_no.startsWith("DRAFT-") ? "Invoice (Draft)" : invoice.invoice_no}
             </h1>
             <span
+              data-testid="status-badge"
               style={{
                 display: "inline-block",
                 padding: "2px 10px",
@@ -314,6 +315,7 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 4 }}>
           {!isVoid && (
             <a
+              data-testid="action-export-pdf"
               href={pdfUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -363,6 +365,7 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
           )}
           {canVoid && (
             <button
+              data-testid="action-void"
               onClick={() => {
                 setVoidReason("");
                 setVoidError(null);
@@ -668,6 +671,7 @@ function InvoiceReadOnly({ invoice, onRefresh }: { invoice: Invoice; onRefresh: 
             <div style={CARD}>
               <div style={SECTION_TITLE}>Journal Entry</div>
               <a
+                data-testid="linked-je"
                 href={`/gl/journal-entries/${invoice.je_id}`}
                 style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--accent)", textDecoration: "none" }}
               >
@@ -963,7 +967,24 @@ export default function InvoiceDetailPage() {
 
   if (invoice.status === "DRAFT") {
     return (
-      <InvoiceForm
+      <div>
+        <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            data-testid="status-badge"
+            style={{
+              display: "inline-block",
+              padding: "2px 10px",
+              borderRadius: 9999,
+              fontSize: 11,
+              fontWeight: 600,
+              background: "rgba(120,120,120,0.12)",
+              color: "var(--text-muted)",
+            }}
+          >
+            Draft
+          </span>
+        </div>
+        <InvoiceForm
         key={invoice.updated_at}
         defaultValues={{
           customer_id: invoice.customer_id,
@@ -976,7 +997,7 @@ export default function InvoiceDetailPage() {
           source_ref: invoice.source_ref ?? "",
           lines: invoice.lines.map((l) => ({
             description: l.description,
-            service_code: l.service_code,
+            service_code: l.service_code ?? undefined,
             qty: l.qty,
             unit_price: l.unit_price,
             discount: l.discount,
@@ -988,6 +1009,7 @@ export default function InvoiceDetailPage() {
         onPost={handlePost}
         onCancel={() => router.push("/ar/invoices")}
       />
+      </div>
     );
   }
 

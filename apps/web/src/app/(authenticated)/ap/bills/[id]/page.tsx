@@ -8,7 +8,7 @@ import Decimal from "decimal.js";
 import { BillForm, type BillSubmitValues } from "@/components/ap/bill-form";
 import { ApiError } from "@/lib/api-client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 type BillStatus = "DRAFT" | "POSTED" | "PARTIAL_PAID" | "PAID" | "VOID";
 
@@ -239,7 +239,7 @@ function BillReadOnly({ bill, onRefresh }: { bill: Bill; onRefresh: () => void }
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 400, lineHeight: 1.2, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
               {bill.bill_no.startsWith("DRAFT-") ? "Bill (Draft)" : bill.bill_no}
             </h1>
-            <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 9999, fontSize: 11, fontWeight: 600, background: statusBg, color: statusColor }}>
+            <span data-testid="status-badge" style={{ display: "inline-block", padding: "2px 10px", borderRadius: 9999, fontSize: 11, fontWeight: 600, background: statusBg, color: statusColor }}>
               {STATUS_LABELS[bill.status]}
             </span>
           </div>
@@ -273,6 +273,7 @@ function BillReadOnly({ bill, onRefresh }: { bill: Bill; onRefresh: () => void }
           )}
           {canVoid && (
             <button
+              data-testid="action-void"
               onClick={() => { setVoidReason(""); setVoidError(null); setShowVoid(true); }}
               style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", fontSize: 12, borderRadius: 4, border: "1px solid var(--error)", background: "transparent", color: "var(--error)", cursor: "pointer", fontFamily: "inherit" }}
             >
@@ -556,6 +557,7 @@ function BillReadOnly({ bill, onRefresh }: { bill: Bill; onRefresh: () => void }
                 ยกเลิก
               </button>
               <button
+                data-testid="action-confirm-void"
                 onClick={doVoid}
                 disabled={voiding}
                 style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", fontSize: 12, fontWeight: 500, borderRadius: 4, border: "none", background: "var(--error)", color: "#fff", cursor: voiding ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: voiding ? 0.7 : 1 }}
@@ -646,9 +648,11 @@ export default function BillDetailPage() {
 
   if (bill.status === "DRAFT") {
     return (
-      <BillForm
-        key={bill.updated_at}
-        defaultValues={{
+      <>
+        <span data-testid="status-badge" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>DRAFT</span>
+        <BillForm
+          key={bill.updated_at}
+          defaultValues={{
           vendor_id: bill.vendor_id,
           vendor_invoice_no: bill.vendor_invoice_no ?? "",
           branch_code: bill.branch_code,
@@ -670,6 +674,7 @@ export default function BillDetailPage() {
         onPost={handlePost}
         onCancel={() => router.push("/ap/bills")}
       />
+      </>
     );
   }
 

@@ -47,8 +47,8 @@ export default function BankAccountsPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await apiClient.get<ListResponse>("/api/v1/bank-accounts?page=1&page_size=100");
-      setAccounts(Array.isArray(result) ? result : (result as ListResponse).data ?? []);
+      const result = await apiClient.getPaged<BankAccount[]>("/api/v1/bank-accounts?page=1&page_size=100");
+      setAccounts(result.data ?? []);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load bank accounts");
     } finally {

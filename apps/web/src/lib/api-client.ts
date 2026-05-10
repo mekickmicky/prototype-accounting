@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API_BASE = '';
 
 export class ApiError extends Error {
   constructor(
@@ -17,6 +17,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       ...init?.headers,
     },
   });
@@ -46,7 +47,7 @@ export const apiClient = {
   ): Promise<{ data: T; meta: M }> => {
     const res = await fetch(`${API_BASE}${path}`, {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
     });
     let body: {
       success: boolean;

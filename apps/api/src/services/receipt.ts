@@ -4,6 +4,7 @@ import type { CreateReceiptBodyType, UpdateReceiptBodyType } from '@wind-acc/sha
 import { prisma as db } from '../lib/prisma';
 import { BusinessRuleError } from '../lib/errors';
 import { logAuditEvent } from './audit-log';
+import { toUserFk } from '../lib/actor';
 import {
   createDraft as jeCreateDraft,
   postInTx as jePostInTx,
@@ -422,7 +423,7 @@ export async function voidReceipt(
       data: {
         status: 'VOID',
         voided_at: new Date(),
-        voided_by_id: actor_id,
+        voided_by_id: toUserFk(actor_id),
         void_reason: reason,
       },
       include: { applications: true },

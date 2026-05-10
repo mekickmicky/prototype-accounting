@@ -9,7 +9,7 @@ import { ApiError } from "@/lib/api-client";
 import Decimal from "decimal.js";
 import { format } from "date-fns";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 type PaymentMethod = "CASH" | "TRANSFER" | "CARD" | "PROMPTPAY" | "CHEQUE" | "OTHER";
 
@@ -165,10 +165,10 @@ function NewReceiptForm() {
     setSelectedInvoices({});
     try {
       const [posted, partial] = await Promise.all([
-        apiReq<{ data: Invoice[] }>(`/api/v1/sales-invoices?customer_id=${cid}&status=POSTED&page_size=100`),
-        apiReq<{ data: Invoice[] }>(`/api/v1/sales-invoices?customer_id=${cid}&status=PARTIAL_PAID&page_size=100`),
+        apiReq<Invoice[]>(`/api/v1/sales-invoices?customer_id=${cid}&status=POSTED&page_size=100`),
+        apiReq<Invoice[]>(`/api/v1/sales-invoices?customer_id=${cid}&status=PARTIAL_PAID&page_size=100`),
       ]);
-      const all = [...(posted.data ?? []), ...(partial.data ?? [])];
+      const all = [...(posted ?? []), ...(partial ?? [])];
       setInvoices(all);
 
       // Pre-select the invoice from query param

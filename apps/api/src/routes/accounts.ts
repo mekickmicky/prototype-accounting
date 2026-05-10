@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { authGuard } from '../middleware/auth-guard';
-import { listAccounts, getAccount, createAccount, updateAccount } from '../services/account';
+import { listAccounts, getAccount, createAccount, updateAccount, deleteAccount } from '../services/account';
 import { BusinessRuleError } from '../lib/errors';
 import { ListAccountsQuery, CreateAccountBody, UpdateAccountBody } from '@wind-acc/shared';
 
@@ -38,4 +38,10 @@ export const accountRoutes = new Elysia({ prefix: '/accounts' })
     }
     const account = await updateAccount(params.code, parsed.data);
     return { success: true as const, data: account };
+  })
+  .delete('/:code', async ({ user, params, set }) => {
+    if (user.role !== 'ADMIN') throw new BusinessRuleError('FORBIDDEN');
+    await deleteAccount(params.code);
+    set.status = 200;
+    return { success: true as const };
   });

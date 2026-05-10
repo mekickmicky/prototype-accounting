@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { JEForm, type JEFormValues } from "@/components/gl/je-form";
 import type { AccountOption } from "@/components/ui/account-picker";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE = "";
 
 interface JEResponse {
   id: string;
